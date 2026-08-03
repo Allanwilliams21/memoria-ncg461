@@ -894,7 +894,11 @@ function renderComites(f,disIn){
 const PEOPLE_DEF={"Jorge Venthur": {"email": "jorge.venthur@vantrust.cl", "area": "AGF / Gerencia General"}, "Rodrigo Avendaño": {"email": "rodrigo.avendano@vantrust.cl", "area": "Compliance"}, "Allan Ugarte": {"email": "allan.ugarte@vantrust.cl", "area": "Sostenibilidad"}, "Loreto Cornejo": {"email": "loreto.cornejo@vantrust.cl", "area": "Gestión de Personas"}, "Alberto Marquez": {"email": "alberto.marquez@vantrust.cl", "area": "Riesgo"}, "Ivonne Muller": {"email": "ivonne.muller@vantrust.cl", "area": "Clientes, Calidad y Proveedores"}, "Lorena Nazal": {"email": "lorena.nazal@vantrust.cl", "area": "Comunidades"}, "Andrea Varela": {"email": "andrea.varela@vantrust.cl", "area": "Tecnología de la Información"}};        // nombre -> {email, area}
 /* Clave demo eliminada (Etapa 4): el acceso al revisor es 100% login real de Supabase. */
 const PEOPLE_NAMES_DEF=Object.keys(PEOPLE_DEF);
-function sbPersonUpsert(name){ if(!SB||!name)return; const p=PEOPLEOV[name]||{}; SB.from("people").upsert({name:name,email:(p.email||null),area:(p.area||null)},{onConflict:"name"}).then(function(r){ if(r.error)console.warn("[SB] people "+name+":",r.error.message); }); }
+/* active:true es imprescindible. Si esta persona fue dada de baja antes, su fila sigue
+   existiendo con active=false; al volver a agregarla el upsert la encuentra por nombre y
+   sin esto la reactivaría solo a medias: quedaría guardada pero invisible, porque
+   loadFromSupabase filtra a los inactivos. Estar en PEOPLEOV significa estar activa. */
+function sbPersonUpsert(name){ if(!SB||!name)return; const p=PEOPLEOV[name]||{}; SB.from("people").upsert({name:name,email:(p.email||null),area:(p.area||null),active:true},{onConflict:"name"}).then(function(r){ if(r.error)console.warn("[SB] people "+name+":",r.error.message); }); }
 /* Baja lógica en vez de borrado físico. Un DELETE choca con las referencias que la
    persona deja al usarse (su cuenta de login en app_users, sus respuestas, su historial).
    Poniendo active=false desaparece de las listas del sitio —loadFromSupabase ya filtra
@@ -1324,8 +1328,13 @@ function notifCard(name,email,subject,body,badge,send){
 function assignPanelInner(d){
   const resp=respOf(d), area=areaOf(d);
   if(role==="revisor"){
-    const opts=`<option value="">— Sin asignar —</option>`+peopleNames().map(n=>`<option ${n===resp?"selected":""}>${esc(n)}</option>`).join("");
-    return `<div class="py"><div class="ph">Responsable (editable)</div><select class="assignsel" onchange="setAssign('${d.id}',this.value)">${opts}</select><div class="ph">Área</div><div>${areaBadge(area)}</div></div>`;
+    /* Si el responsable actual fue dado de baja, igual se muestra marcado como inactivo:
+       si no, el desplegable diría "Sin asignar" mientras la base dice que sí tiene dueño. */
+    const nombres=peopleNames();
+    const huerfano=(resp&&nombres.indexOf(resp)<0)?`<option selected>${esc(resp)}</option>`:"";
+    const opts=`<option value="">— Sin asignar —</option>`+huerfano+nombres.map(n=>`<option ${n===resp?"selected":""}>${esc(n)}</option>`).join("");
+    const avisoH=huerfano?`<div class="saved-note" style="color:var(--burgundy)">⚠️ ${esc(resp)} está dado de baja. Vuelve a agregarlo en Configuración o reasigna este requerimiento.</div>`:"";
+    return `<div class="py"><div class="ph">Responsable (editable)</div><select class="assignsel" onchange="setAssign('${d.id}',this.value)">${opts}</select>${avisoH}<div class="ph">Área</div><div>${areaBadge(area)}</div></div>`;
   }
   return `<div class="py"><div class="ph">Área responsable</div><div>${areaBadge(area)}</div><div class="ph">Responsable</div><div>${resp?esc(resp):"<i>Sin asignar</i>"}</div></div>`;
 }
