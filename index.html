@@ -227,19 +227,27 @@ tr.resp-detail td{background:#faf9f6;padding:4px 16px 12px}
 .tb-btn{border:1px solid #3a3a38;background:#2c2c2a;color:#cfcfd2;padding:6px 12px;border-radius:999px;cursor:pointer;font-size:12px;font-weight:500;font-family:inherit}
 .tb-btn:hover{background:#3a3a38;color:#fff}
 .login-bg{position:fixed;inset:0;background:linear-gradient(135deg,#1d1d1b,#2c2c2a);z-index:10000;display:flex;align-items:center;justify-content:center;padding:24px}
-.login-card{background:#fff;border-radius:16px;max-width:760px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden}
-.login-brand{background:var(--carbon);color:#fff;padding:26px;display:flex;flex-direction:column;align-items:center;gap:10px}
-.login-logo{height:52px;width:auto;display:block}
-.login-sub{font-size:15px;color:#fff;font-weight:500;letter-spacing:.3px}
-.login-cols{display:grid;grid-template-columns:1fr 1fr}
-@media(max-width:640px){.login-cols{grid-template-columns:1fr}}
-.login-pane{padding:24px 26px}
-.login-pane.rev{background:#faf9f6;border-left:1px solid var(--line)}
-.login-pane h3{margin:0 0 6px;font-size:15px;color:var(--carbon)}
-.login-pane p{margin:0 0 14px;font-size:12.5px;color:#54545a;line-height:1.5}
-.login-pane select,.login-pane input{width:100%;font-family:inherit;font-size:13px;padding:9px 11px;border:1px solid var(--line2);border-radius:9px;background:#fff;color:var(--carbon);box-sizing:border-box}
+.login-card{background:#fff;border-radius:16px;max-width:430px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);overflow:hidden}
+.login-brand{background:var(--carbon);color:#fff;padding:30px 26px 32px;display:flex;flex-direction:column;align-items:center;gap:22px}
+.login-logo{height:38px;width:auto;display:block}
+.login-sub{font-size:23px;color:#fff;font-weight:300;letter-spacing:-.3px;line-height:1.2;text-align:center}
+.login-body{padding:26px}
+.login-body .glbl{display:block;font-size:12.7px;font-weight:600;color:#3f3f44;margin:0 0 6px}
+.login-body input+.glbl,.login-body select+.glbl,.login-body .login-hint+.glbl{margin-top:14px}
+#lg-form{margin-top:16px}
+#lg-code-box .code-step{margin-top:2px}
+.login-body select,.login-body input{width:100%;font-family:inherit;font-size:13px;padding:10px 11px;border:1px solid var(--line2);border-radius:9px;background:#fff;color:var(--carbon);box-sizing:border-box}
+.lg-btn{margin-top:14px;width:100%}
 .login-err{color:var(--burgundy);font-size:12px;min-height:16px;margin:6px 0}
-.login-foot{padding:12px 26px 18px;font-size:11px;color:#9a9a96;border-top:1px solid var(--line)}
+.req-flash{box-shadow:0 0 0 3px #d4a017 inset;transition:box-shadow .3s}
+.inbox-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:#fff;margin-bottom:7px;cursor:pointer}
+.inbox-row:hover{border-color:var(--line2);background:#faf9f6}
+.inbox-row .ir-main{flex:1;min-width:0}
+.inbox-row .ir-t{font-size:13px;font-weight:600;color:var(--carbon)}
+.inbox-row .ir-s{font-size:11.5px;color:#6b6b70;margin-top:2px}
+.inbox-row .ir-go{font-size:11.5px;color:#3b6ea5;white-space:nowrap}
+.tb-count{display:inline-block;min-width:17px;padding:0 5px;margin-left:5px;border-radius:999px;background:var(--burgundy);color:#fff;font-size:10.5px;font-weight:600;text-align:center}
+.login-hint{font-size:12px;color:#6b6b70;margin:12px 0 0;line-height:1.45}
 .dl-banner{background:#faf9f6;border:1px solid var(--line);border-left:3px solid #2e7d5b;border-radius:8px;padding:10px 14px;margin:0 0 16px;font-size:12.8px;color:#3a3a3e}
 .notif-mail{font-size:12.5px;color:#3a3a3e}
 .notif-mail>div{margin-bottom:4px}
@@ -254,7 +262,7 @@ tr.resp-detail td{background:#faf9f6;padding:4px 16px 12px}
 .prevpaste:hover{background:#faf9f6;border-color:#cfd9cf}
 .vnt-modal-bg{position:fixed;inset:0;background:rgba(20,20,18,.45);display:flex;align-items:center;justify-content:center;z-index:9999}
 .vnt-modal{background:#fff;border-radius:12px;max-width:460px;width:90%;padding:22px 22px 16px;box-shadow:0 12px 40px rgba(0,0,0,.25)}
-.vnt-modal-b{font-size:14px;line-height:1.55;color:var(--carbon);margin-bottom:16px}
+.vnt-modal-b{font-size:14px;line-height:1.55;color:var(--carbon);margin-bottom:16px;white-space:pre-line}
 .vnt-modal-acts{display:flex;gap:10px;justify-content:flex-end}
 
 .docs{list-style:none;margin:6px 0;padding:0}
@@ -432,7 +440,20 @@ function goEstado(){view={type:"estado"};renderAll();window.scrollTo(0,0);}
 function goSection(code){view={type:"node",code};renderAll();window.scrollTo(0,0);}
 function goSub(code){const sec=code.split(".")[0];expanded[sec]=true;view={type:"node",code};renderAll();window.scrollTo(0,0);}
 
-function areaBadge(area){ if(!area) return `<span class="chip">Sin asignar</span>`; const m=AREA[area]||{c:"#777"}; return `<span class="badge" style="background:${m.c}">${esc(area)}</span>`; }
+function areaBadge(area){ if(!area) return `<span class="chip">Sin asignar</span>`; return `<span class="badge" style="background:${areaColor(area)}">${esc(area)}</span>`; }
+/* Color del área. Si el área está en el mapa AREA usa su color oficial; si no (áreas
+   escritas a mano al crear un responsable) genera uno estable a partir del nombre:
+   el mismo texto da siempre el mismo color. Saturación alta y tono oscuro → nunca gris
+   y siempre legible con el texto blanco de .badge. */
+function areaColor(area){
+  const m=AREA[area]; if(m&&m.c) return m.c;
+  const s=String(area||"").trim().toLowerCase(); if(!s) return "#3b6ea5";
+  let h=2166136261; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619)>>>0; }
+  const hue=(h%24)*15;                 // 24 tonos separados 15°
+  const sat=[46,54,62,70][(h>>>5)%4];  // 4 saturaciones
+  const lig=[28,33,38][(h>>>9)%3];     // 3 luminosidades, todas oscuras
+  return "hsl("+hue+","+sat+"%,"+lig+"%)";
+}
 
 function renderMain(){ if(view.type!=="node"&&typeof actVisitClose==="function")actVisitClose(); if(view.type==="estado"){renderEstado();return;} if(view.type==="metrics"){renderMetrics();return;} if(view.type==="config"){renderConfig();return;} if(view.type==="notif"){renderNotif();return;} renderNode(view.code); }
 
@@ -442,6 +463,11 @@ function setEstadoTab(t){estadoTab=t;renderMain();}
 function setRespFilter(v){respFilter=v;renderMain();}
 function toggleResp(rid){const k="__r_"+rid;expanded[k]=!expanded[k];renderMain();}
 function goToNode(code){ if(code==="__niif"){go9niif();return;} const sec=String(code).split(".")[0]; if(HAS_SUBS[sec])expanded[sec]=true; view={type:"node",code:code}; renderAll(); window.scrollTo(0,0); }
+/* Salta a un requerimiento puntual: abre su sección, lo despliega y lo centra en pantalla. */
+function goReq(id){ const d=BYID[id]; if(!d) return; goToNode(d.node);
+  setTimeout(function(){ const el=document.querySelector('.req[data-id="'+id+'"]');
+    if(!el) return; el.classList.add("open"); el.scrollIntoView({behavior:"smooth",block:"center"});
+    el.classList.add("req-flash"); setTimeout(function(){ el.classList.remove("req-flash"); },1800); },60); }
 
 function respStats(){
   const map={};
@@ -551,12 +577,12 @@ function fieldsForNode(code){
   if(code==="5.4"){let a=[];CATS.forEach((c,i)=>{a.push("brecha-"+i+"-media","brecha-"+i+"-mediana");});return a;}
   return [];
 }
-function numField(id,label){const na=fna(id),dis=na||role!=="gerente";
+function numField(id,label){const na=fna(id),dis=na||!canEditFieldId(id);
   return `<div class="field"><label class="flbl">${label}</label><input type="number" min="0" step="any" id="f-${id}" value="${esc(fv(id))}" ${dis?'disabled':''} oninput="setF('${id}',this.value)"/><label class="na"><input type="checkbox" ${na?'checked':''} ${role==="revisor"?'':'disabled'} onchange="setNA('${id}',this.checked)"/> N/A no aplica</label></div>`;}
-function textField(id,label,ph){const na=fna(id),dis=na||role!=="gerente";
+function textField(id,label,ph){const na=fna(id),dis=na||!canEditFieldId(id);
   return `<div class="field"><label class="flbl">${label}</label><input type="text" id="f-${id}" value="${esc(fv(id))}" placeholder="${esc(ph||'')}" ${dis?'disabled':''} oninput="setF('${id}',this.value)"/><label class="na"><input type="checkbox" ${na?'checked':''} ${role==="revisor"?'':'disabled'} onchange="setNA('${id}',this.checked)"/> N/A no aplica</label></div>`;}
 function calcField(id,label){return `<div class="field calc"><label class="flbl">${label}</label><div class="calcbox" id="calc-${id}">${calcVal(id)}</div></div>`;}
-function structActs(id){ if(role!=="gerente") return ""; return `<div class="row-actions"><button class="btn ghost" onclick="setReqStatus('${id}','draft')">Guardar borrador</button><button class="btn primary" onclick="setReqStatus('${id}','sent')">Enviar a revisión</button><span class="saved-note">${ANS[id]&&ANS[id].updated?('Actualizado: '+esc(ANS[id].updated)):''}</span></div>`; }
+function structActs(id){ if(!canEditAns(id)) return ""; return `<div class="row-actions"><button class="btn ghost" onclick="setReqStatus('${id}','draft')">Guardar borrador</button><button class="btn primary" onclick="setReqStatus('${id}','sent')">Enviar a revisión</button><span class="saved-note">${ANS[id]&&ANS[id].updated?('Actualizado: '+esc(ANS[id].updated)):''}</span></div>`; }
 function structuredFor(code){
   if(code==="3.2"){
     return `<div class="fcard"><h3>3.2 — Conformación del Directorio</h3><div class="desc">Campos estructurados según NCG 30, art. 3.2 xiii. El porcentaje se calcula automáticamente.</div><div class="field-grid cols-4">${numField("dir-total","Nº Total de Directores")}${numField("dir-indep","Nº Directores Independientes")}${numField("dir-mujeres","Nº Directoras (Mujeres)")}${calcField("dir-pct","% Directoras sobre Total")}</div><div class="row-sep">Conformación detallada (3.2 xiii) — titulares y suplentes</div><div class="field-grid cols-4">${numField("dir-tit-h","Nº Directores Titulares (Hombres)")}${numField("dir-tit-m","Nº Directores Titulares (Mujeres)")}${numField("dir-sup-h","Nº Directores Suplentes (Hombres)")}${numField("dir-sup-m","Nº Directores Suplentes (Mujeres)")}</div>${structActs("struct-3.2")}</div>`;
@@ -565,12 +591,12 @@ function structuredFor(code){
     return `<div class="fcard"><h3>3.3 — Comités del Directorio</h3><div class="desc">Identificación de comités y marco de gestión de riesgos utilizado.</div><div class="field-grid cols-3">${numField("com-n","Nº de Comités")}${textField("com-nombres","Nombre de los Comités")}${textField("com-marco","Marco de gestión de riesgos utilizado","Ej. COSO ERM, ISO 31000")}</div>${structActs("struct-3.3")}</div>`;
   }
   if(code==="5.1"){
-    let rows=CATS.map((c,i)=>{const na=fna("dot-"+i+"-na"),dis=na||role!=="gerente";
+    let rows=CATS.map((c,i)=>{const na=fna("dot-"+i+"-na"),dis=na||!canEditFieldId("dot-"+i+"-h");
       return `<tr><td class="catname">${esc(c)}</td><td><input type="number" min="0" id="f-dot-${i}-h" value="${esc(fv("dot-"+i+"-h"))}" ${dis?'disabled':''} oninput="setF('dot-${i}-h',this.value)"/></td><td><input type="number" min="0" id="f-dot-${i}-m" value="${esc(fv("dot-"+i+"-m"))}" ${dis?'disabled':''} oninput="setF('dot-${i}-m',this.value)"/></td><td class="calc" id="calc-dot-${i}-total">${calcVal("dot-"+i+"-total")}</td><td class="nacell"><label class="na"><input type="checkbox" ${na?'checked':''} ${role==="revisor"?'':'disabled'} onchange="setNA('dot-${i}-na',this.checked)"/> N/A</label></td></tr>`;}).join("");
     return `<div class="fcard"><h3>5.1 — Dotación de Personal</h3><div class="desc">Nº de personas por categoría de funciones y sexo. El total se calcula automáticamente.</div><table class="dt"><thead><tr><th style="text-align:left">Categoría de funciones</th><th>Nº Hombres</th><th>Nº Mujeres</th><th>Total</th><th>N/A</th></tr></thead><tbody>${rows}<tr class="totals"><td class="catname">Total</td><td id="calc-dot-tot-h">${calcVal("dot-tot-h")}</td><td id="calc-dot-tot-m">${calcVal("dot-tot-m")}</td><td id="calc-dot-tot">${calcVal("dot-tot")}</td><td></td></tr></tbody></table>${structActs("struct-5.1")}</div>`;
   }
   if(code==="5.4"){
-    let rows=CATS.map((c,i)=>{const na=fna("brecha-"+i+"-na"),dis=na||role!=="gerente";
+    let rows=CATS.map((c,i)=>{const na=fna("brecha-"+i+"-na"),dis=na||!canEditFieldId("brecha-"+i+"-media");
       return `<tr><td class="catname">${esc(c)}</td><td><input type="number" step="any" id="f-brecha-${i}-media" value="${esc(fv("brecha-"+i+"-media"))}" ${dis?'disabled':''} oninput="setF('brecha-${i}-media',this.value)"/></td><td><input type="number" step="any" id="f-brecha-${i}-mediana" value="${esc(fv("brecha-"+i+"-mediana"))}" ${dis?'disabled':''} oninput="setF('brecha-${i}-mediana',this.value)"/></td><td class="nacell"><label class="na"><input type="checkbox" ${na?'checked':''} ${role==="revisor"?'':'disabled'} onchange="setNA('brecha-${i}-na',this.checked)"/> N/A</label></td></tr>`;}).join("");
     return `<div class="fcard"><h3>5.4.2 — Brecha Salarial por Sexo</h3><div class="desc">Brecha salarial (%) por categoría de funciones, separada por media y mediana.</div><table class="dt"><thead><tr><th style="text-align:left">Categoría de funciones</th><th>Brecha media (%)</th><th>Brecha mediana (%)</th><th>N/A</th></tr></thead><tbody>${rows}</tbody></table>${structActs("struct-5.4")}</div>`;
   }
@@ -608,9 +634,9 @@ function go9niif(){expanded["9"]=true;view={type:"node",code:"__niif"};renderAll
 function setNiifEarly(b){FIELDS["niif_early"]=Object.assign({},FIELDS["niif_early"],{v:b?"si":""});save(LS.fields,FIELDS);sbUpsertField("niif_early");renderSide();renderMain();}
 function niifPct(){ let n=0; if(String(fv("niif_s1")).trim())n++; if(String(fv("niif_s2")).trim())n++; return Math.round(n/2*100); }
 function renderNiifBlock(){
-  const on=fv("niif_early")==="si"; const dis=role!=="gerente";
+  const on=fv("niif_early")==="si"; const dis=!canEditNow();
   const conf = on ? `<div class="meta" style="margin-bottom:6px"><span class="badge" style="background:#2e7d5b">✓ Divulgación voluntaria declarada</span></div>` : "";
-  const chk = `<label class="na" style="font-size:13px;margin-bottom:4px"><input type="checkbox" ${on?'checked':''} ${role==="gerente"?'':'disabled'} onchange="setNiifEarly(this.checked)"/> Divulgación voluntaria</label>`;
+  const chk = `<label class="na" style="font-size:13px;margin-bottom:4px"><input type="checkbox" ${on?'checked':''} ${dis?'disabled':''} onchange="setNiifEarly(this.checked)"/> Divulgación voluntaria</label>`;
   const s1=`<div class="gfield" style="margin-top:14px"><label class="glbl">Descripción de la aplicación de NIIF S1 — Requerimientos Generales para la Información Financiera a Revelar Relacionada con la Sostenibilidad (ISSB)</label><textarea id="f-niif_s1" ${dis?'disabled':''} oninput="setF('niif_s1',this.value)">${esc(fv("niif_s1"))}</textarea></div>`;
   const s2=`<div class="gfield" style="margin-top:12px"><label class="glbl">Descripción de la aplicación de NIIF S2 — Información a Revelar Relacionada con el Clima (ISSB)</label><textarea id="f-niif_s2" ${dis?'disabled':''} oninput="setF('niif_s2',this.value)">${esc(fv("niif_s2"))}</textarea></div>`;
   return `<div class="fcard">${conf}${chk}${s1}${s2}</div>`;
@@ -830,8 +856,10 @@ function renderTCalc(f){
 function tableFilled(f){ if(f.t==="tcalc")return true; const rows=TBL[f.id]||[];
   return rows.some(r=>r&&(r._na||Object.keys(r).some(k=>k!=="_na"&&r[k]!==""&&r[k]!=null))); }
 /* ===== Section 3.3 — Comités (bespoke: Parte A registro + Parte B integrantes) ===== */
-function renderComites(f){
-  const dis=role!=="gerente";
+function renderComites(f,disIn){
+  /* dis llega desde renderField (ya calculado con canEditReq del requerimiento 3.3).
+     El fallback existe solo si alguien llama esta función sin el parámetro. */
+  const dis=(disIn!==undefined)?disIn:!canEditTableId(f&&f.id?f.id:"t_com");
   const specA={id:"t_com",mode:"dynamic",add:"+ Agregar Comité",cols:[
     {k:"nombre",label:"Nombre del Comité",type:"text"},
     {k:"nint",label:"Nº de integrantes",type:"num"},
@@ -867,12 +895,30 @@ const PEOPLE_DEF={"Jorge Venthur": {"email": "jorge.venthur@vantrust.cl", "area"
 /* Clave demo eliminada (Etapa 4): el acceso al revisor es 100% login real de Supabase. */
 const PEOPLE_NAMES_DEF=Object.keys(PEOPLE_DEF);
 function sbPersonUpsert(name){ if(!SB||!name)return; const p=PEOPLEOV[name]||{}; SB.from("people").upsert({name:name,email:(p.email||null),area:(p.area||null)},{onConflict:"name"}).then(function(r){ if(r.error)console.warn("[SB] people "+name+":",r.error.message); }); }
-function sbPersonDelete(name){ if(!SB||!name)return Promise.resolve({error:null}); return SB.from("people").delete().eq("name",name); }
+/* Baja lógica en vez de borrado físico. Un DELETE choca con las referencias que la
+   persona deja al usarse (su cuenta de login en app_users, sus respuestas, su historial).
+   Poniendo active=false desaparece de las listas del sitio —loadFromSupabase ya filtra
+   por active— y se conserva el rastro de lo que respondió. */
+function sbPersonDeactivate(name){ if(!SB||!name)return Promise.resolve({error:null}); return SB.from("people").update({active:false}).eq("name",name); }
+function sbPersonReactivate(name){ if(!SB||!name)return Promise.resolve({error:null}); return SB.from("people").update({active:true}).eq("name",name); }
 function peopleAll(){ const o={}; if(Object.keys(PEOPLEOV).length){ for(const n in PEOPLEOV){ o[n]=Object.assign({},PEOPLEOV[n]); } } else { PEOPLE_NAMES_DEF.forEach(n=>{o[n]=Object.assign({},PEOPLE_DEF[n]);}); } return o; }
 function peopleNames(){ return Object.keys(peopleAll()); }
 function isAddedPerson(n){ return true; }   /* todas las personas se gestionan en la base */
 function addPerson(name,area,email){ name=(name||"").trim(); if(!name||peopleAll()[name]) return; PEOPLEOV[name]={email:(email||"").trim(),area:area||""}; savePeople(); sbPersonUpsert(name); if(typeof view!=="undefined"&&view.type==="config") renderConfig(); }
-function delPerson(name){ vntConfirm("¿Eliminar a "+name+" de la lista de responsables?","Sí, eliminar","Cancelar",function(){ sbPersonDelete(name).then(function(r){ if(r&&r.error){ vntAlert("No se puede eliminar a "+name+": tiene login o requerimientos asociados. Reasigna o quita esas referencias primero."); return; } delete PEOPLEOV[name]; savePeople(); if(view.type==="config") renderConfig(); }); }); }
+function delPerson(name){
+  const asig=DATA.filter(function(d){ return countableReq(d)&&respOf(d)===name; });
+  let msg="¿Quitar a "+name+" de la lista de responsables?";
+  if(asig.length) msg+="\n\n⚠️ Tiene "+asig.length+" requerimiento(s) asignado(s). Si continúas quedarán sin responsable y nadie podrá editarlos hasta reasignarlos.";
+  msg+="\n\nSe desactiva, no se borra: se conserva el historial de lo que respondió.";
+  vntConfirm(msg,"Sí, quitar","Cancelar",function(){
+    sbPersonDeactivate(name).then(function(r){
+      if(r&&r.error){ vntAlert("No se pudo quitar a "+name+".\n\nMotivo que devuelve el servidor:\n"+(r.error.message||r.error.code||"error desconocido")); return; }
+      delete PEOPLEOV[name]; savePeople();
+      NOTIF.queue=NOTIF.queue.filter(function(x){ return !(x.type==="assign"&&x.name===name&&!x.sent); }); saveNotif();
+      if(view.type==="config") renderConfig();
+    });
+  });
+}
 function setPersonArea(name,v){ PEOPLEOV[name]=Object.assign({},PEOPLEOV[name],{area:v}); savePeople(); sbPersonUpsert(name); }
 
 const LS_AUTH="vnt_ncg461_auth", LS_ASSIGN="vnt_ncg461_assign", LS_PEOPLE="vnt_ncg461_people", LS_NOTIF="vnt_ncg461_notif";
@@ -896,14 +942,68 @@ function setPersonEmail(name,v){ PEOPLEOV[name]=Object.assign({},PEOPLEOV[name],
 /* ----- asignación (override del revisor) ----- */
 function respOf(d){ const o=ASSIGN[d.id]; return (o&&o.responsable!=null)?o.responsable:(d.responsable||""); }
 function areaOf(d){ const o=ASSIGN[d.id]; return (o&&o.area!=null)?o.area:(d.area||""); }
-function setAssign(reqId,name){ ASSIGN[reqId]={responsable:name,area:areaForPerson(name)}; saveAssign(); sbUpsertAssign(reqId); if(name) maybeNotify(name); renderSide(); renderCurrentKeepOpen(); }
+function setAssign(reqId,name){ const prev=(ASSIGN[reqId]&&ASSIGN[reqId].responsable)||"";
+  ASSIGN[reqId]={responsable:name,area:areaForPerson(name)}; saveAssign(); sbUpsertAssign(reqId);
+  if(prev&&prev!==name) unNotify(prev,reqId);
+  if(name) maybeNotify(name,reqId);
+  renderSide(); renderCurrentKeepOpen(); }
 
 /* ----- notificar una sola vez por persona ----- */
-function maybeNotify(name){ if(!name||NOTIF.notified[name]) return; NOTIF.notified[name]=nowStr(); NOTIF.queue.push({type:"assign",name:name,email:emailOf(name),ts:nowStr()}); saveNotif(); }
+/* Acumula en un solo aviso todos los requerimientos que el revisor va asignando a una
+   persona. No se envía nada solo: el revisor aprieta "Enviar" en Notificaciones. Una vez
+   enviado, esa persona queda en NOTIF.notified y no se le vuelve a armar un aviso de
+   asignación (los recordatorios de pendientes son aparte). */
+function maybeNotify(name,reqId){ if(!name) return;
+  let e=NOTIF.queue.filter(function(x){ return x.type==="assign"&&x.name===name&&!x.sent; })[0];
+  if(!e){ if(NOTIF.notified[name]) return;
+    e={type:"assign",name:name,email:emailOf(name),ts:nowStr(),reqs:[],sent:false}; NOTIF.queue.push(e); }
+  e.email=emailOf(name); e.reqs=e.reqs||[];
+  if(reqId&&e.reqs.indexOf(reqId)<0) e.reqs.push(reqId);
+  e.updated=nowStr(); saveNotif(); }
+/* Quita un requerimiento del aviso pendiente si se desasigna antes de enviarlo */
+function unNotify(name,reqId){ if(!name||!reqId) return;
+  NOTIF.queue.forEach(function(x){ if(x.type==="assign"&&x.name===name&&!x.sent&&Array.isArray(x.reqs)){
+    const i=x.reqs.indexOf(reqId); if(i>=0) x.reqs.splice(i,1); } });
+  NOTIF.queue=NOTIF.queue.filter(function(x){ return !(x.type==="assign"&&!x.sent&&Array.isArray(x.reqs)&&x.reqs.length===0); });
+  saveNotif(); }
 
 /* ----- permisos ----- */
-function canEditReq(d){ if(role==="revisor") return true; if(role==="gerente") return respOf(d)===AUTH.name; return false; }
+/* ----- cadena lineal de estados -----
+   pend / draft / fix  → editable por el responsable asignado y por el revisor
+   sent (en revisión)  → el responsable queda bloqueado; el revisor sí puede editar
+   rev (aprobado)      → nadie edita, hasta que el revisor presione «Editar» (reabreReq)
+   comp                → igual que aprobado                                          */
+const ST_LOCK_ALL={rev:1,comp:1};   // aprobado/completo: bloqueado para todos
+const ST_LOCK_RESP={sent:1};        // en revisión: bloqueado solo para el responsable
+function canEditStatus(id){ const st=statusOf(id);
+  if(ST_LOCK_ALL[st]) return false;
+  if(role!=="revisor" && ST_LOCK_RESP[st]) return false;
+  return true; }
+function canEditReq(d){ if(!d) return false; if(!canEditStatus(d.id)) return false;
+  if(role==="revisor") return true;
+  if(role==="gerente") return respOf(d)===AUTH.name;
+  return false; }
 function canEditNow(){ return role==="revisor"||role==="gerente"; }
+/* Para bloques narrativos y estructurados que no tienen responsable asignado */
+function canEditAns(id){ return canEditNow()&&canEditStatus(id); }
+/* Explica en una línea por qué está bloqueado (vacío si no lo está) */
+function lockNote(d){ if(!d) return ""; const st=statusOf(d.id);
+  if(st==="rev") return "Aprobado. Solo el revisor puede reabrirlo con «Editar».";
+  if(st==="comp") return "Marcado como completo. El revisor debe reabrirlo para editar.";
+  if(st==="sent"&&role!=="revisor") return "Enviado a revisión. No se puede editar hasta que el revisor comente o solicite ajustes.";
+  if(role==="gerente"&&respOf(d)!==AUTH.name) return "Solo el área responsable puede editar.";
+  return ""; }
+function lockNoteHtml(d){ const n=lockNote(d); return n?`<div class="row-actions"><span class="saved-note">${esc(n)}</span></div>`:""; }
+/* El revisor reabre un requerimiento aprobado: vuelve a Borrador y queda editable */
+function reabreReq(id){ const d=BYID[id]; if(role!=="revisor") return;
+  ANS[id]=Object.assign({text:""},ANS[id],{status:"draft",updated:nowStr()}); save(LS.answers,ANS); sbUpsertAnswer(id);
+  COM[id]=COM[id]||[]; COM[id].push({author:"Revisor",ts:nowStr(),text:"↺ Reabierto para edición",kind:""}); save(LS.comments,COM); sbInsertComment(id,COM[id][COM[id].length-1]);
+  if(typeof logActivity==="function"&&d)logActivity("save",d);
+  renderSide(); renderCurrentKeepOpen(); }
+/* Permiso a partir de un id de campo o de tabla: busca su requerimiento y aplica canEditReq.
+   Si el campo no pertenece a ningún requerimiento (ej. bloque NIIF), cae en canEditNow. */
+function canEditFieldId(id){ const rq=(typeof reqOfField==="function")?reqOfField(id):null; const d=rq?BYID[rq]:null; return d?canEditReq(d):canEditNow(); }
+function canEditTableId(id){ const rq=(typeof reqOfTable==="function")?reqOfTable(id):null; const d=rq?BYID[rq]:null; return d?canEditReq(d):canEditNow(); }
 
 /* ----- requerimientos contestables / pendientes por persona ----- */
 function countableReq(d){ return !(d.intro||isInstr(d)||isCtxOnly(d)||isHidden(d)); }
@@ -929,27 +1029,37 @@ function loginEl(){ let el=document.getElementById("loginbg"); if(!el){ el=docum
 function showLogin(){ const el=loginEl(); el.style.display="flex"; renderLogin(); }
 function hideLogin(){ const el=document.getElementById("loginbg"); if(el){ el.style.display="none"; el.innerHTML=""; } }
 function renderLogin(){
-  const opts=peopleNames().map(n=>`<option value="${esc(n)}">${esc(n)} · ${esc(areaForPerson(n))}</option>`).join("");
   loginEl().innerHTML=`<div class="login-card">
     <div class="login-brand"><img class="login-logo" src="${LOGO_VT}" alt="VanTrust Capital"/><span class="login-sub">Memoria Anual Integrada</span></div>
-    <div class="login-cols">
-      <div class="login-pane"><h3>Responsable</h3><p>Identifícate con tu correo para completar los requerimientos asignados a tu área. Te enviaremos un código de acceso.</p>
-        <label class="glbl">Tu correo</label>
-        <input type="email" id="lg-resp-email" placeholder="tu.correo@empresa.cl" autocomplete="username" onkeydown="if(event.key==='Enter')respRequestCode(document.getElementById('lg-resp-email').value)"/>
-        <button class="btn primary" style="margin-top:10px;width:100%" onclick="respRequestCode(document.getElementById('lg-resp-email').value)">Enviar código de acceso</button>
-        <div id="lg-code-box"></div>
-      </div>
-      <div class="login-pane rev"><h3>Revisor</h3><p>Acceso de revisión: asignar responsables, comentar, aprobar y configurar recordatorios.</p>
-        <label class="glbl">Correo</label>
-        <input type="email" id="lg-email" placeholder="correo@empresa.cl" autocomplete="username"/>
-        <label class="glbl" style="margin-top:6px">Contraseña</label>
-        <input type="password" id="lg-pw" placeholder="Contraseña de revisor" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginRevisor(document.getElementById('lg-email').value,document.getElementById('lg-pw').value)"/>
-        <div id="lg-err" class="login-err"></div>
-        <button class="btn primary" style="margin-top:6px;width:100%" onclick="loginRevisor(document.getElementById('lg-email').value,document.getElementById('lg-pw').value)">Entrar como Revisor</button>
-      </div>
+    <div class="login-body">
+      <label class="glbl" for="lg-profile">Escoja un perfil para ingresar</label>
+      <select id="lg-profile" onchange="renderLoginForm(this.value)">
+        <option value="">— Seleccione —</option>
+        <option value="resp">Responsable</option>
+        <option value="rev">Revisor</option>
+      </select>
+      <div id="lg-form"></div>
     </div>
-    <div class="login-foot">Acceso seguro con tu cuenta. El revisor entra con correo y contraseña; el responsable, con un código enviado a su correo. Los datos se guardan en el servidor.</div>
   </div>`;
+}
+/* Muestra el formulario que corresponde al perfil elegido */
+function renderLoginForm(kind){
+  const box=document.getElementById("lg-form"); if(!box) return;
+  if(kind==="resp"){
+    box.innerHTML=`<label class="glbl">Correo</label>
+      <input type="email" id="lg-resp-email" placeholder="tu.correo@vantrust.cl" autocomplete="username" onkeydown="if(event.key==='Enter')respRequestCode(document.getElementById('lg-resp-email').value)"/>
+      <button class="btn primary lg-btn" onclick="respRequestCode(document.getElementById('lg-resp-email').value)">Enviar código</button>
+      <div id="lg-code-box"></div>`;
+    const f=document.getElementById("lg-resp-email"); if(f)f.focus();
+  } else if(kind==="rev"){
+    box.innerHTML=`<label class="glbl">Correo</label>
+      <input type="email" id="lg-email" placeholder="correo@vantrust.cl" autocomplete="username"/>
+      <label class="glbl">Contraseña</label>
+      <input type="password" id="lg-pw" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginRevisor(document.getElementById('lg-email').value,document.getElementById('lg-pw').value)"/>
+      <div id="lg-err" class="login-err"></div>
+      <button class="btn primary lg-btn" onclick="loginRevisor(document.getElementById('lg-email').value,document.getElementById('lg-pw').value)">Ingresar</button>`;
+    const f=document.getElementById("lg-email"); if(f)f.focus();
+  } else { box.innerHTML=""; }
 }
 /* (Código demo de generación de códigos eliminado: el responsable usa request-code/verify-code reales.) */
 function respRequestCode(email){
@@ -959,7 +1069,7 @@ function respRequestCode(email){
   if(!SB){ if(box)box.innerHTML='<div class="login-err">Sin conexión con el servidor. Recarga la página.</div>'; return; }
   // Pide el código al backend (request-code lo envía por correo). Respuesta siempre genérica.
   fetch(SB_URL+"/functions/v1/request-code",{method:"POST",headers:{"apikey":SB_PUBLISHABLE_KEY,"Authorization":"Bearer "+SB_PUBLISHABLE_KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email})}).catch(function(e){});
-  if(box) box.innerHTML=`<div class="code-step"><div class="saved-note" style="margin:10px 0 4px">Si tu correo está registrado, te enviamos un código de 6 caracteres a <b>${esc(email)}</b>. Revisa tu bandeja (y spam).</div><label class="glbl" style="margin-top:8px">Código de acceso</label><input type="text" id="lg-code" maxlength="6" placeholder="Ej. 4KD9PX" style="text-transform:uppercase" onkeydown="if(event.key==='Enter')respVerify('${esc(email)}')"/><div id="lg-code-err" class="login-err"></div><button class="btn primary" style="margin-top:4px;width:100%" onclick="respVerify('${esc(email)}')">Entrar como Responsable</button></div>`;
+  if(box) box.innerHTML=`<div class="code-step"><div class="login-hint">Código enviado a <b>${esc(email)}</b>. Revisa tu bandeja y la carpeta de spam.</div><label class="glbl">Código recibido</label><input type="text" id="lg-code" maxlength="6" placeholder="Ej. 4KD9PX" style="text-transform:uppercase" onkeydown="if(event.key==='Enter')respVerify('${esc(email)}')"/><div id="lg-code-err" class="login-err"></div><button class="btn primary lg-btn" onclick="respVerify('${esc(email)}')">Ingresar</button></div>`;
 }
 async function respVerify(email){
   const errEl=document.getElementById("lg-code-err"); if(errEl)errEl.textContent="";
@@ -997,7 +1107,7 @@ function logout(){ if(typeof actLogout==="function")actLogout(); try{ if(SB)SB.a
 /* ===== Topbar (reemplaza el toggle libre de rol) ===== */
 function renderTopbar(){ const el=document.getElementById("roleToggle"); if(!el) return;
   if(AUTH.role==="revisor"){
-    el.innerHTML=`<span class="who-chip rev">Revisor</span><button class="tb-btn" onclick="goConfig()">⚙ Configuración</button><button class="tb-btn" onclick="goNotif()">✉ Notificaciones</button><button class="tb-btn" onclick="logout()">Cerrar sesión</button>`;
+    el.innerHTML=`<span class="who-chip rev">Revisor</span><button class="tb-btn" onclick="goConfig()">⚙ Configuración</button><button class="tb-btn" onclick="goNotif()">✉ Notificaciones${(function(){const n=inboxCount();return n?'<span class="tb-count">'+n+'</span>':'';})()}</button><button class="tb-btn" onclick="logout()">Cerrar sesión</button>`;
   } else if(AUTH.role==="gerente"){
     el.innerHTML=`<span class="who-chip">${esc(AUTH.name)} · ${esc(areaForPerson(AUTH.name))}</span><button class="tb-btn" onclick="logout()">Cerrar sesión</button>`;
   } else { el.innerHTML=""; }
@@ -1052,7 +1162,11 @@ const FIELD2REQ={}, TABLE2REQ={};
   }catch(e){ console.warn("[Supabase] buildFieldReqMaps:",e); }
 })();
 function reqOfField(id){ return (id in FIELD2REQ)?FIELD2REQ[id]:null; }
-function reqOfTable(id){ if(id in TABLE2REQ)return TABLE2REQ[id]; const b=String(id).replace(/__(g|sd)$/,""); return (b in TABLE2REQ)?TABLE2REQ[b]:null; }
+function reqOfTable(id){ if(id in TABLE2REQ)return TABLE2REQ[id];
+  /* Las tablas de integrantes (Parte B de comités) se llaman t_comint_0, t_comint_1, ...
+     y pertenecen al mismo requerimiento 3.3 que la tabla t_com de la Parte A. */
+  if(/^t_comint_\d+$/.test(String(id))) return (("t_com" in TABLE2REQ)?TABLE2REQ["t_com"]:null);
+  const b=String(id).replace(/__(g|sd)$/,""); return (b in TABLE2REQ)?TABLE2REQ[b]:null; }
 const _sbTimers={};
 function sbDebounce(key,fn,ms){ clearTimeout(_sbTimers[key]); _sbTimers[key]=setTimeout(fn,ms||600); }
 function sbWho(){ return (AUTH&&AUTH.name)||null; }
@@ -1100,16 +1214,41 @@ function renderConfig(){
 
 /* ===== Vista: Notificaciones (revisor) ===== */
 function goNotif(){ if(role!=="revisor")return; view={type:"notif"}; renderAll(); window.scrollTo(0,0); }
+
+/* ===== Bandeja de recibidos: lo que los responsables enviaron a revisión ===== */
+function inboxItems(){ return DATA.filter(d=>countableReq(d)&&statusOf(d.id)==="sent")
+  .sort(function(a,b){ const ta=(ANS[a.id]&&ANS[a.id].updated)||"", tb=(ANS[b.id]&&ANS[b.id].updated)||""; return tb.localeCompare(ta); }); }
+function inboxCount(){ try{ return inboxItems().length; }catch(e){ return 0; } }
+function inboxBlock(){
+  const list=inboxItems();
+  let h=`<div class="block-h" style="margin-top:4px">📥 Recibidos — enviados a revisión${list.length?' ('+list.length+')':''}</div>`;
+  if(!list.length) return h+`<div class="no-comments">Nadie ha enviado requerimientos a revisión.</div>`;
+  h+=`<div class="saved-note" style="margin:0 0 8px">Haz clic en cualquiera para abrirlo y revisarlo.</div>`;
+  list.forEach(function(d){
+    const who=respOf(d)||"Sin responsable", when=(ANS[d.id]&&ANS[d.id].updated)||"";
+    h+=`<div class="inbox-row" onclick="goReq('${d.id}')" title="Abrir este requerimiento">
+      <span class="chip ${ST_CLS.sent}">${ST_LBL.sent}</span>
+      <span class="ir-main"><span class="ir-t">${esc(reqLabel(d))} — ${esc(reqShort(d))}</span>
+      <span class="ir-s">${esc(who)}${areaOf(d)?' · '+esc(areaOf(d)):''}${when?' · '+esc(when):''}</span></span>
+      <span class="ir-go">Abrir ›</span></div>`; });
+  return h;
+}
 function renderNotif(){
   const di=deadlineInfo();
   let h=`<div class="crumb"><b>Notificaciones</b></div><div class="sec-title">Notificaciones</div><div class="sec-sub">Cola de avisos a responsables. El envío automático se habilitará con el backend (Fase 2); por ahora se muestra la cola y el contenido generado.</div>`;
+  h+=inboxBlock();
   h+=`<div class="gnote" style="border-left-color:#3b6ea5;background:#eef4fb;color:#2b5580">📨 El sitio es estático: estos correos no se envían solos. Con backend se enviarán automáticamente según la cadencia configurada (${esc(NOTIF.config.cadence)}).</div>`;
   // Asignación (una vez)
   h+=`<div class="block-h" style="margin-top:16px">Avisos de asignación (una vez por persona)</div>`;
-  const aq=NOTIF.queue.filter(x=>x.type==="assign");
-  if(!aq.length){ h+=`<div class="no-comments">Aún no se ha asignado a nadie por primera vez.</div>`; }
-  else { aq.forEach((x,idx)=>{ const total=assignedForName(x.name).length; const ctx={nombre:x.name,area:areaForPerson(x.name),total:total,fecha_limite:di.weekStr};
-      h+=notifCard(x.name, x.email, "Asignación de requerimientos — Memoria Anual Integrada VanTrust AGF", tplSubstitute(NOTIF.config.tplAssign,ctx), "En cola desde "+x.ts); }); }
+  const aq=NOTIF.queue.filter(x=>x.type==="assign"&&!x.sent);
+  if(!aq.length){ h+=`<div class="no-comments">No hay avisos de asignación pendientes de enviar.</div>`; }
+  else { h+=`<div class="saved-note" style="margin:0 0 8px">Un solo correo por persona con todo lo que le asignaste. No se envía nada hasta que aprietes «Enviar».</div>`;
+    aq.forEach(function(x){ const reqs=(x.reqs||[]).map(id=>BYID[id]).filter(Boolean);
+      const total=reqs.length||assignedForName(x.name).length;
+      const lista=reqs.map(d=>"• "+reqLabel(d)+" — "+reqShort(d)).join("\n");
+      const ctx={nombre:x.name,area:areaForPerson(x.name),total:total,lista:lista,fecha_limite:di.weekStr};
+      const cuerpo=tplSubstitute(NOTIF.config.tplAssign,ctx)+(lista?"\n\nRequerimientos asignados:\n"+lista:"");
+      h+=notifCard(x.name, x.email, "Asignación de requerimientos — Memoria Anual Integrada VanTrust AGF", cuerpo, total+" requerimiento(s) · en cola desde "+x.ts, {kind:"assign",name:x.name}); }); }
   // Recordatorios (responsables con pendientes)
   h+=`<div class="block-h" style="margin-top:20px">Recordatorios — responsables con pendientes</div>`;
   let any=false;
@@ -1121,10 +1260,64 @@ function renderNotif(){
   h+=`<div class="footer-note">Generado a partir del estado actual del informe. Cadencia: ${esc(NOTIF.config.cadence)} · meta 100%: ${di.weekStr}.</div>`;
   document.getElementById("main").innerHTML=h;
 }
-function notifCard(name,email,subject,body,badge){
+/* ---- Puente con el backend de correo ----
+   Llama a la Edge Function send-now con el token de sesión del revisor. Esa función
+   valida el rol contra app_users, manda el correo por Gmail y lo registra en
+   notification_queue. Acá nunca viaja ningún secreto: solo la sesión del usuario.
+   Devuelve {ok:true} o {ok:false,error:"texto en castellano"}. */
+const SB_ERR_MSG={falta_sesion:"tu sesión se cerró; vuelve a entrar",
+  sesion_invalida:"tu sesión venció; vuelve a entrar",
+  solo_el_revisor_puede_enviar:"solo el revisor puede enviar correos",
+  correo_invalido:"el correo de esa persona no es válido",
+  faltan_asunto_o_cuerpo:"el correo quedó sin asunto o sin texto",
+  no_se_pudo_enviar_el_correo:"Gmail rechazó el envío; revisa los registros de la función",
+  server_error:"error en el servidor"};
+async function sbEnqueueMail(mail){
+  if(!SB) return {ok:false,error:"sin conexión con el servidor"};
+  let tok=null;
+  try{ const s=await SB.auth.getSession(); tok=s&&s.data&&s.data.session&&s.data.session.access_token; }catch(e){}
+  if(!tok) return {ok:false,error:"tu sesión se cerró; vuelve a entrar"};
+  try{
+    const r=await fetch(SB_URL+"/functions/v1/send-now",{method:"POST",
+      headers:{"apikey":SB_PUBLISHABLE_KEY,"Authorization":"Bearer "+tok,"Content-Type":"application/json"},
+      body:JSON.stringify({to:mail.to,subject:mail.subject,body:mail.body,
+        type:(mail.kind==="reminder"?"reminder":"assign"),person_name:mail.name||null})});
+    const j=await r.json().catch(function(){ return null; });
+    if(j&&j.ok===true) return {ok:true};
+    const code=(j&&j.error)||("HTTP "+r.status);
+    return {ok:false,error:(SB_ERR_MSG[code]||code)};
+  }catch(e){ return {ok:false,error:"no se pudo conectar con el servidor"}; }
+}
+/* Envía el aviso de asignación acumulado de una persona.
+   Solo marca como enviado si el backend confirma; si falla, el aviso queda en la cola. */
+async function sendAssignMail(name){
+  if(role!=="revisor") return;
+  const e=NOTIF.queue.filter(function(x){ return x.type==="assign"&&x.name===name&&!x.sent; })[0];
+  if(!e) return;
+  const email=emailOf(name);
+  if(!email){ vntAlert("«"+name+"» no tiene correo registrado. Agrégalo en Configuración."); return; }
+  const di=deadlineInfo();
+  const reqs=(e.reqs||[]).map(function(id){ return BYID[id]; }).filter(Boolean);
+  const lista=reqs.map(function(d){ return "• "+reqLabel(d)+" — "+reqShort(d); }).join("\n");
+  const ctx={nombre:name,area:areaForPerson(name),total:reqs.length,lista:lista,fecha_limite:di.weekStr};
+  const subject="Asignación de requerimientos — Memoria Anual Integrada VanTrust AGF";
+  const body=tplSubstitute(NOTIF.config.tplAssign,ctx)+(lista?"\n\nRequerimientos asignados:\n"+lista:"");
+  const res=await sbEnqueueMail({to:email,name:name,subject:subject,body:body,kind:"assign",reqs:e.reqs||[]});
+  if(!res.ok){ vntAlert("No se pudo enviar: "+(res.error||"error desconocido")+"\n\nEl aviso sigue en la cola."); return; }
+  e.sent=true; e.sentAt=nowStr(); NOTIF.notified[name]=e.sentAt; saveNotif();
+  vntAlert("Correo enviado a "+name+" ("+email+") con "+reqs.length+" requerimiento(s).");
+  renderAll();
+}
+function notifCard(name,email,subject,body,badge,send){
   const acc=accId("notif-"+name+"-"+subject);
   const open=!!ACC[acc];
-  return `<div class="acc ${open?'open':''}" data-acc="${acc}"><div class="acc-h" onclick="toggleAcc('${acc}')"><span>✉ ${esc(name)} &lt;${esc(email||'sin correo')}&gt; · <span class="saved-note">${esc(badge)}</span></span><span class="acc-c">▾</span></div><div class="acc-b"><div class="notif-mail"><div><b>Para:</b> ${esc(email||'(sin correo registrado)')}</div><div><b>Asunto:</b> ${esc(subject)}</div><div class="notif-body">${esc(body)}</div></div></div></div>`;
+  let acts="";
+  if(send&&send.kind==="assign"){
+    acts=email
+      ? `<div class="row-actions"><button class="btn primary" onclick="sendAssignMail('${esc(name).replace(/'/g,"\\'")}')">✉ Enviar ahora</button><span class="saved-note" id="sm-${accId('sm-'+name)}"></span></div>`
+      : `<div class="row-actions"><span class="saved-note">Sin correo registrado: agrégalo en Configuración para poder enviar.</span></div>`;
+  }
+  return `<div class="acc ${open?'open':''}" data-acc="${acc}"><div class="acc-h" onclick="toggleAcc('${acc}')"><span>✉ ${esc(name)} &lt;${esc(email||'sin correo')}&gt; · <span class="saved-note">${esc(badge)}</span></span><span class="acc-c">▾</span></div><div class="acc-b"><div class="notif-mail"><div><b>Para:</b> ${esc(email||'(sin correo registrado)')}</div><div><b>Asunto:</b> ${esc(subject)}</div><div class="notif-body">${esc(body)}</div></div>${acts}</div></div>`;
 }
 
 /* ===== Panel de Asignación (editable por revisor) ===== */
@@ -1406,7 +1599,7 @@ function docDelete(id,key){ vntConfirm("¿Eliminar este documento de respaldo?",
 function reqAutocFields(d){ const s=schemaOf(d); const out=[]; if(s&&Array.isArray(s.fields)){ s.fields.forEach(f=>{ if(f.id&&(f.t==="number"||f.t==="table"||f.t==="comites")) out.push(f); }); } return out; }
 function reqHasAutocomplete(d){ if(d&&d.sec==="5") return true; return reqAutocFields(d).length>0; }
 function boxB(d){
-  if(!canEditReq(d)) return `<div class="panel boxb"><h4>⬆️ Autocompletar con Excel</h4><div class="desc">Solo el área responsable puede cargar datos para autocompletar.</div></div>`;
+  if(!canEditReq(d)) return `<div class="panel boxb"><h4>⬆️ Autocompletar con Excel</h4><div class="desc">${esc(lockNote(d)||"Solo el área responsable puede cargar datos para autocompletar.")}</div></div>`;
   const sec5 = d.sec==="5";
   const note = sec5 ? "Para toda la sección 5 usa la carga masiva del inicio. Aquí cargas solo este requerimiento." : "Sube un Excel/CSV y el sistema completará los campos numéricos. No se almacena.";
   const ctrl = `<div class="dropzone" id="dzB-${d.id}" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="autocDrop(event,'${d.id}')"><input type="file" id="fileB-${d.id}" style="display:none" accept=".xlsx,.xls,.csv" onchange="autocPick(this,'${d.id}')"/><button class="tiny-btn" onclick="document.getElementById('fileB-${d.id}').click()">⬆️ Cargar archivo</button><span class="dz-hint">.xlsx, .xls, .csv · máx 5 MB · no se almacena</span></div>`;
@@ -1592,7 +1785,8 @@ function dif519Badge(d){ return (DIF519.indexOf(sk(d))>=0)?`<span class="badge d
 function dif519NoteBox(d){ const n=(typeof DIF519NOTE!=="undefined")&&DIF519NOTE[sk(d)]; return n?`<div class="gnote" style="border-left-color:#3b6ea5;background:#eef4fb;color:#2b5580;margin-top:8px">🕐 ${esc(n)}</div>`:""; }
 function lawIcons(text){ let out=""; const seen={}; for(const num in LAWS){ if(seen[num]||!text||text.indexOf(num)<0)continue; seen[num]=1; const l=LAWS[num]; out+=`<span class="info lawi" onclick="event.stopPropagation()">§<span class="tip"><b>${esc(l.name)}</b><br>${esc(l.desc)}<br><a href="${esc(l.url)}" target="_blank">Ver norma oficial ↗</a></span></span>`; } return out; }
 function gStatus(d){ if(reqNA(d))return"na"; const s=statusOf(d.id); if(s==="rev")return"rev"; if(s==="fix")return"fix"; if(s==="sent")return"sent"; if(reqComplete(d))return"comp"; if(s==="draft")return"draft"; return"pend"; }
-function setReqStatus(id,status){ANS[id]=Object.assign({text:""},ANS[id],{status:status,updated:nowStr()});save(LS.answers,ANS);sbUpsertAnswer(id);if(typeof logActivity==="function")logActivity("save",BYID[id]);renderSide();renderCurrentKeepOpen();}
+function setReqStatus(id,status){const _d=BYID[id]; if(_d?!canEditReq(_d):!canEditAns(id))return;
+  ANS[id]=Object.assign({text:""},ANS[id],{status:status,updated:nowStr()});save(LS.answers,ANS);sbUpsertAnswer(id);if(typeof logActivity==="function")logActivity("save",BYID[id]);renderSide();renderCurrentKeepOpen();}
 function guidedCard(d){
   const s=schemaOf(d), st=gStatus(d);
   return `<div class="req" data-id="${d.id}"><div class="head" onclick="toggleReq('${d.id}')"><div class="code">${esc(CODE_LABEL[d.sub+"||"+d.item]||d.item||d.sub)}</div><div class="htext"><div class="qtitle">${esc(s.title)} ${lawIcons(d.req)}</div><div class="meta">${dif519Badge(d)}${areaBadge(areaOf(d))}${respOf(d)?`<span class="chip">${esc(respOf(d))}</span>`:""}<span class="chip ${ST_CLS[st]}">${ST_LBL[st]}</span>${prevBtn(d)}</div></div><label class="na-req" onclick="event.stopPropagation()"><input type="checkbox" ${reqNA(d)?'checked':''} ${role==="revisor"?'':'disabled'} onchange="setReqNA(BYID['${d.id}'],this.checked)"/> N/A</label><div class="toggle-ico">›</div></div><div class="body">${guidedBody(d)}</div></div>`;
@@ -1602,7 +1796,7 @@ function renderField(f,dis){
   const v=fv(f.id); let ctl="";
   if(f.t==="note") return `<div class="ods-note"><div class="ods-note-h">${esc(f.text)}</div>${f.desc?`<div class="gnote" style="margin-top:4px">${esc(f.desc)}</div>`:""}</div>`;
   if(f.t==="table") return renderTable(f,dis);
-  if(f.t==="comites") return renderComites(f);
+  if(f.t==="comites") return renderComites(f,dis);
   if(f.t==="tcalc") return renderTCalc(f);
   if(f.t==="yearseries") return renderYearSeries(f,dis);
   if(f.t==="ods") return renderOdsField(f,dis);
@@ -1645,13 +1839,17 @@ function guidedBody(d){
   else if(gs==="na") inner=`<div class="gnote na">No aplica según tu respuesta a: <b>${esc((s.gate&&s.gate.label)||'la pregunta previa')}</b>.</div>`;
   else if(gs==="wait") inner=`<div class="gnote wait">Primero responde: <b>${esc((s.gate&&s.gate.label)||'la pregunta previa relacionada')}</b>.</div>`;
   else { inner=(s.help?`<div class="gnote">${esc(s.help)}</div>`:"")+`<div class="gfields">`+s.fields.map(f=>renderField(f,dis)).join("")+`</div>`; }
-  const acts=canEditReq(d)?`<div class="row-actions"><button class="btn ghost" onclick="setReqStatus('${d.id}','draft')">Guardar borrador</button><button class="btn primary" onclick="setReqStatus('${d.id}','sent')">Enviar a revisión</button><span class="saved-note">${ANS[d.id]&&ANS[d.id].updated?('Actualizado: '+esc(ANS[d.id].updated)):''}</span></div>`:"";
+  const acts=canEditReq(d)?`<div class="row-actions"><button class="btn ghost" onclick="setReqStatus('${d.id}','draft')">Guardar borrador</button><button class="btn primary" onclick="setReqStatus('${d.id}','sent')">Enviar a revisión</button><span class="saved-note">${ANS[d.id]&&ANS[d.id].updated?('Actualizado: '+esc(ANS[d.id].updated)):''}</span></div>`:lockNoteHtml(d);
   const leftMain=`${dif519NoteBox(d)}${normaAcc}${odsSasbBlock(d)}<div class="block-h">Completa la información</div>${inner}${acts}${prevPanel(d)}<div class="block-h" style="margin-top:18px">Comentarios del revisor</div>${commentsHtml(d.id)}${role==="revisor"?revisorControls(d.id):""}`;
   const panels=`<div class="panel"><h4>📌 Asignación</h4>${assignPanelInner(d)}</div>${repoPanel(d)}`;
   return `<div class="grid2"><div>${leftMain}</div><div>${panels}</div></div>`;
 }
 function commentsHtml(id){const coms=COM[id]||[];return coms.length?coms.map(c=>`<div class="comment ${c.kind||''}"><div class="ch"><b>${esc(c.author)}</b><span>${esc(c.ts)}</span></div><div class="cx">${esc(c.text)}</div></div>`).join(""):`<div class="no-comments">Aún no hay comentarios del revisor.</div>`;}
-function revisorControls(id){return `<textarea class="white" id="cm-${id}" style="min-height:64px" placeholder="Escribe un comentario..."></textarea><div class="row-actions"><button class="btn ghost" onclick="addComment('${id}','')">Comentar</button><button class="btn ok" onclick="addComment('${id}','rev')">Aprobar</button><button class="btn fix" onclick="addComment('${id}','fix')">Requiere ajustes</button></div>`;}
+function revisorControls(id){
+  const ta=`<textarea class="white" id="cm-${id}" style="min-height:64px" placeholder="Escribe un comentario..."></textarea>`;
+  /* Aprobado: el único camino de vuelta es «Editar», que reabre el requerimiento */
+  if(statusOf(id)==="rev"||statusOf(id)==="comp") return ta+`<div class="row-actions"><button class="btn ghost" onclick="addComment('${id}','')">Comentar</button><button class="btn primary" onclick="reabreReq('${id}')">✎ Editar</button><span class="saved-note">Aprobado. «Editar» lo reabre para cambios.</span></div>`;
+  return ta+`<div class="row-actions"><button class="btn ghost" onclick="addComment('${id}','')">Comentar</button><button class="btn ok" onclick="addComment('${id}','rev')">Aprobar</button><button class="btn fix" onclick="addComment('${id}','fix')">Requiere ajustes</button></div>`;}
 function prevPanel(d){
   const pa=PREVANS[sk(d)]; let prev="";
   if(pa){ prev+=`<div class="ph">Respuesta ${pa.year||PREV} del área${pa.area?' ('+esc(pa.area)+')':''}</div><div style="white-space:pre-wrap">${esc(pa.ans)}</div>`; }
@@ -1665,20 +1863,26 @@ function reqCard(d){
 }
 function reqBody(d){
   const a=ANS[d.id]||{text:"",status:"pend"}; const canEdit=canEditReq(d);
-  return `<div class="grid2"><div>${dif519NoteBox(d)}<div class="block-h">Texto del requerimiento (NCG 30 · 461/519)</div><div class="norm">${esc(d.req)}</div><div class="block-h">Respuesta del área${respOf(d)?' · '+esc(respOf(d)):''}</div><textarea class="white" id="ta-${d.id}" placeholder="Redacta aquí la respuesta..." ${canEdit?'':'disabled'}>${esc(a.text)}</textarea><div class="row-actions">${canEdit?`<button class="btn ghost" onclick="saveAns('${d.id}','draft')">Guardar borrador</button><button class="btn primary" onclick="saveAns('${d.id}','sent')">Enviar a revisión</button>`:`<span class="saved-note">Solo el área responsable puede editar.</span>`}<span class="saved-note">${a.updated?('Última edición: '+esc(a.updated)):''}</span></div>${prevPanel(d)}<div class="block-h">Comentarios del revisor</div>${commentsHtml(d.id)}${role==="revisor"?revisorControls(d.id):""}</div><div><div class="panel"><h4>📌 Asignación</h4>${assignPanelInner(d)}</div>${repoPanel(d)}</div></div>`;
+  return `<div class="grid2"><div>${dif519NoteBox(d)}<div class="block-h">Texto del requerimiento (NCG 30 · 461/519)</div><div class="norm">${esc(d.req)}</div><div class="block-h">Respuesta del área${respOf(d)?' · '+esc(respOf(d)):''}</div><textarea class="white" id="ta-${d.id}" placeholder="Redacta aquí la respuesta..." ${canEdit?'':'disabled'}>${esc(a.text)}</textarea><div class="row-actions">${canEdit?`<button class="btn ghost" onclick="saveAns('${d.id}','draft')">Guardar borrador</button><button class="btn primary" onclick="saveAns('${d.id}','sent')">Enviar a revisión</button>`:`<span class="saved-note">${esc(lockNote(d)||"Solo el área responsable puede editar.")}</span>`}<span class="saved-note">${a.updated?('Última edición: '+esc(a.updated)):''}</span></div>${prevPanel(d)}<div class="block-h">Comentarios del revisor</div>${commentsHtml(d.id)}${role==="revisor"?revisorControls(d.id):""}</div><div><div class="panel"><h4>📌 Asignación</h4>${assignPanelInner(d)}</div>${repoPanel(d)}</div></div>`;
 }
 const LEAFNOTE={"1":{note:"Este índice puede organizarse libremente por el revisor. No es necesario que siga el orden de la NCG 30 — puede agrupar secciones de manera diferente según la estructura narrativa del informe. Use el campo de texto para redactar o pegar el índice definitivo.",ph:"Ej. 1. Carta del CEO — p.4 / 2. Perfil Corporativo — p.8 / ..."}};
 function leafNarr(code){
-  const id=LEAF_NARR[code]; const canEdit=canEditNow(); const t=ansText(id); const nt=LEAFNOTE[code];
+  const id=LEAF_NARR[code]; const canEdit=canEditAns(id); const t=ansText(id); const nt=LEAFNOTE[code];
   return `<div class="fcard"><h3>${code}. ${esc(SECNAME[code])}</h3>${nt?`<div class="desc" style="font-style:italic">${esc(nt.note)}</div>`:`<div class="desc">Contenido narrativo de la sección.</div>`}<textarea class="white" id="ta-${id}" placeholder="${nt?esc(nt.ph):'Redacta aquí el contenido de esta sección...'}" ${canEdit?'':'disabled'}>${esc(t)}</textarea><div class="row-actions">${canEdit?`<button class="btn ghost" onclick="saveAns('${id}','draft')">Guardar borrador</button><button class="btn primary" onclick="saveAns('${id}','sent')">Enviar a revisión</button>`:''}<span class="saved-note">${ANS[id]&&ANS[id].updated?('Última edición: '+esc(ANS[id].updated)):''}</span></div></div>`;
 }
 function toggleReq(id){const el=document.querySelector(`.req[data-id="${id}"]`);if(el)el.classList.toggle("open");}
-function saveAns(id,status){const ta=document.getElementById("ta-"+id);ANS[id]={text:ta.value,status:status,updated:nowStr()};save(LS.answers,ANS);sbUpsertAnswer(id);if(typeof logActivity==="function")logActivity("save",BYID[id]);renderSide();renderCurrentKeepOpen();}
+function saveAns(id,status){const _d=BYID[id]; if(_d?!canEditReq(_d):!canEditAns(id))return;
+  const ta=document.getElementById("ta-"+id);if(!ta)return;ANS[id]={text:ta.value,status:status,updated:nowStr()};save(LS.answers,ANS);sbUpsertAnswer(id);if(typeof logActivity==="function")logActivity("save",BYID[id]);renderSide();renderCurrentKeepOpen();}
 function addComment(id,kind){const t=document.getElementById("cm-"+id);const txt=t?t.value.trim():"";if(!txt&&!kind)return;
   COM[id]=COM[id]||[];const label=kind==="rev"?"✓ Aprobado":(kind==="fix"?"✎ Requiere ajustes":"");
   COM[id].push({author:"Revisor",ts:nowStr(),text:(label?label+(txt?": "+txt:""):txt),kind:kind});save(LS.comments,COM);sbInsertComment(id,COM[id][COM[id].length-1]);
-  if(kind==="rev"){ANS[id]=ANS[id]||{text:"",status:"pend"};ANS[id].status="rev";save(LS.answers,ANS);sbUpsertAnswer(id);}
-  if(kind==="fix"){ANS[id]=ANS[id]||{text:"",status:"pend"};ANS[id].status="fix";save(LS.answers,ANS);sbUpsertAnswer(id);}
+  /* Un comentario simple sobre algo que está en revisión lo devuelve al responsable
+     (queda "Requiere ajustes"), que es lo que lo habilita a editar de nuevo. */
+  let newSt=null;
+  if(kind==="rev") newSt="rev";
+  else if(kind==="fix") newSt="fix";
+  else if(statusOf(id)==="sent") newSt="fix";
+  if(newSt){ANS[id]=Object.assign({text:""},ANS[id],{status:newSt,updated:nowStr()});save(LS.answers,ANS);sbUpsertAnswer(id);}
   renderSide();renderCurrentKeepOpen();}
 function addRef(id){const l=document.getElementById("rl-"+id).value.trim();const u=document.getElementById("ru-"+id).value.trim();if(!u&&!l)return;
   REF[id]=REF[id]||[];REF[id].push({label:l,url:u||"#"});save(LS.refs,REF);sbSyncRefs(id);renderCurrentKeepOpen();}
