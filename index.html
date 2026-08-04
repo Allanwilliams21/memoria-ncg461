@@ -221,6 +221,13 @@ tr.resp-detail td{background:#faf9f6;padding:4px 16px 12px}
 .ods-msel:hover{border-color:var(--burgundy)}
 .ods-msel.on{border-color:transparent}
 /* ===== 4.2 Auth / topbar / notificaciones ===== */
+.save-btn{font-weight:600}
+.save-dirty{background:#fdf3d6;border-color:#e0c069;color:#7a5a10}
+.save-err{background:#fbe9e9;border-color:#d08a8a;color:#8c2b2b}
+#saveChip{margin-right:8px}
+.secst-auto{display:inline-block;padding:2px 9px;border:1px solid;border-radius:11px;font-size:12px;font-weight:500}
+.btn.limpiar{color:#8a5a1a;border-color:#d9b98a}
+.btn.limpiar:hover{background:#fbf3e6}
 #roleToggle{background:transparent;border:none;padding:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .who-chip{color:#fff;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:999px;background:#2c2c2a;border:1px solid #3a3a38}
 .who-chip.rev{background:var(--burgundy);border-color:var(--burgundy)}
@@ -295,7 +302,7 @@ tr.resp-detail td{background:#faf9f6;padding:4px 16px 12px}
     <div class="titles"><span class="t1">Memoria Anual Integrada</span>
       <span class="t2">Administradora General de Fondos</span></div>
   </div>
-  <div class="role-switch"><span class="lbl">Vista:</span>
+  <div class="role-switch"><span id="saveChip"></span><span class="lbl">Vista:</span>
     <div class="toggle" id="roleToggle">
       <button data-role="gerente" class="active">Gerente / Área</button>
       <button data-role="revisor">Revisor</button>
@@ -378,7 +385,7 @@ function fieldFilled(id){
 }
 function ansText(id){return (ANS[id]&&ANS[id].text)||"";}
 function statusOf(id){return (ANS[id]&&ANS[id].status)||"pend";}
-const ST_LBL={pend:"Pendiente",draft:"Borrador",sent:"Enviado a revisión",rev:"Aprobado",fix:"Requiere ajustes",comp:"Completo",na:"No aplica"};
+const ST_LBL={pend:"Pendiente",draft:"Borrador",sent:"Enviado a revisión",rev:"Completado",fix:"Requiere ajustes",comp:"Completado",na:"No aplica"};
 const ST_CLS={pend:"s-pend",draft:"s-draft",sent:"s-sent",rev:"s-rev",fix:"s-fix",comp:"s-comp",na:"s-na"};
 
 function sk(d){return d.sub+"||"+d.item;}
@@ -411,11 +418,108 @@ function sectionPct(code){
 }
 function generalPct(){const a=MAIN.map(m=>sectionPct(m.code)); return Math.round(a.reduce((x,y)=>x+y,0)/a.length);}
 
-const SECST={pend:{l:"Pendiente",c:"#9a9a96"},redaccion:{l:"En redacción",c:"#d4a017"},revision:{l:"En revisión",c:"#e0801f"},aprobado:{l:"Aprobado",c:"#2e7d5b"}};
-function secStatus(code){return SEC[code]||"pend";}
+/* ---- Punto 9: el estado de cada sección se CALCULA, ya no se elige a mano ----
+   Pendiente     · no se ha empezado nada en la sección
+   En redacción  · hay algo empezado pero la sección no está terminada
+   Completado    · todos los requerimientos contestables están aprobados      */
+const SECST={pend:{l:"Pendiente",c:"#9a9a96"},redaccion:{l:"En redacción",c:"#d4a017"},aprobado:{l:"Completado",c:"#2e7d5b"}};
+const ST_DONE={rev:1,comp:1};
+/* Requerimientos contestables de una sección (los mismos que cuentan para el avance) */
+function secReqs(code){ const out=DATA.filter(function(d){ return String(d.sec)===String(code) && countableReq(d); });
+  const nid=LEAF_NARR[code]; if(!out.length && nid && BYID[nid]) out.push(BYID[nid]);
+  return out; }
+function secStatus(code){
+  const rs=secReqs(code);
+  if(!rs.length){ const nid=LEAF_NARR[code];
+    if(nid){ const st=statusOf(nid); if(ST_DONE[st]) return "aprobado"; return (st==="pend"&&ansText(nid).trim()==="")?"pend":"redaccion"; }
+    return "pend"; }
+  let done=0, started=0;
+  rs.forEach(function(d){ const st=statusOf(d.id);
+    if(ST_DONE[st]) done++;
+    if(st!=="pend"||narrDone(d.id)) started++; });
+  if(done===rs.length) return "aprobado";
+  return started?"redaccion":"pend";
+}
+/* Se conserva para no romper llamadas antiguas, pero ya no se usa desde la interfaz. */
 function setSecStatus(code,v){SEC[code]=v;save(LS.sec,SEC);sbUpsertSection(code);renderSide();if(view.type==="estado")renderMain();}
+/* Espeja el estado calculado en la base, para que quede disponible fuera del sitio. */
+function syncSectionStatus(){ if(!SB) return;
+  /* `section_status` es de escritura exclusiva del revisor (política rev_write).
+     Para un responsable esto daba 12 rechazos de RLS, uno por sección. El estado
+     de sección se CALCULA en pantalla igual para todos: esta tabla es solo una
+     copia para consultarla fuera del sitio, así que la escribe quien puede. */
+  if(role!=="revisor") return;
+  MAIN.forEach(function(m){ const v=secStatus(m.code); if(SEC[m.code]===v) return; SEC[m.code]=v; sbUpsertSection(m.code); }); }
 function exportJSON(){const data={meta:{generado:new Date().toISOString(),memoria:YEAR,norma:"NCG 30 (461/519)",entidad:"VanTrust Capital AGF"},answers:ANS,fields:FIELDS,comments:COM,refs:REF,sectionStatus:SEC,tables:(typeof TBL!=="undefined"?TBL:{}),assignments:(typeof ASSIGN!=="undefined"?ASSIGN:{}),people:(typeof PEOPLEOV!=="undefined"?PEOPLEOV:{}),notifications:(typeof NOTIF!=="undefined"?NOTIF:{})};const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="respuestas_memoria_"+YEAR+".json";document.body.appendChild(a);a.click();a.remove();}
 
+
+/* ===================================================================
+   Punto 3 — Botón «Guardar» global + aviso de cambios sin guardar
+   -------------------------------------------------------------------
+   Casi todo el sitio guarda solo (cada campo se escribe al escribirlo).
+   Lo que NO se guarda solo son los cuadros de texto grandes: la respuesta
+   narrativa de un requerimiento y el comentario del revisor. Eso es lo que
+   este botón asegura, junto con reintentar lo que el servidor haya
+   rechazado.
+   =================================================================== */
+const DIRTY={};                       /* id de textarea -> true */
+function markDirty(id){ if(!DIRTY[id]){ DIRTY[id]=true; renderSaveChip(); } }
+function clearDirty(id){ if(id==null){ for(const k in DIRTY) delete DIRTY[k]; for(const e in SBERR) delete SBERR[e]; }
+  else { delete DIRTY[id]; } renderSaveChip(); }
+function dirtyIds(){ return Object.keys(DIRTY); }
+/* ¿Hay algo sin guardar? Cuenta también un comentario escrito y no publicado. */
+function pendingComment(){ try{ return [].slice.call(document.querySelectorAll('textarea[id^="cm-"]')).some(function(t){ return t.value.trim()!==""; }); }catch(e){ return false; } }
+function hasUnsaved(){ return dirtyIds().length>0 || sbErrCount()>0 || pendingComment(); }
+
+/* Vuelca a memoria + servidor todos los cuadros de respuesta modificados */
+function flushDirty(){
+  let nOk=0;
+  dirtyIds().forEach(function(k){
+    if(k.indexOf("ta-")!==0) return;
+    const id=k.slice(3), ta=document.getElementById(k); if(!ta) { delete DIRTY[k]; return; }
+    const d=BYID[id]; const puede = d?canEditReq(d):canEditAns(id);
+    if(!puede){ delete DIRTY[k]; return; }
+    const st=statusOf(id);
+    ANS[id]=Object.assign({},ANS[id],{text:ta.value,status:(st==="pend"?"draft":st),updated:nowStr()});
+    sbUpsertAnswer(id); nOk++; delete DIRTY[k];
+  });
+  if(nOk){ save(LS.answers,ANS); if(typeof syncSectionStatus==="function") syncSectionStatus(); }
+  return nOk;
+}
+function saveAllNow(silent){
+  const nOk=flushDirty();
+  const nRe=sbRetryAll();
+  renderSide(); renderSaveChip();
+  if(silent) return;
+  setTimeout(function(){
+    const fall=sbErrCount();
+    let m="Guardado.\n\n"+nOk+" respuesta(s) escritas"+(nRe?" · "+nRe+" reintento(s) al servidor":"")+".";
+    if(fall) m="Se guardó lo que se pudo, pero el servidor rechazó "+fall+" cambio(s).\n\n"
+      +"Motivo más probable: no eres el responsable de ese requerimiento, o está bloqueado por su estado.\n\n"
+      +"Detalle:\n"+Object.keys(SBERR).slice(0,5).map(function(k){return "• "+k+": "+SBERR[k].msg;}).join("\n");
+    vntAlert(m);
+  },700);
+}
+/* Indicador en la barra superior */
+function renderSaveChip(){
+  const el=document.getElementById("saveChip"); if(!el) return;
+  const nd=dirtyIds().length, ne=sbErrCount();
+  if(!AUTH||!AUTH.role){ el.innerHTML=""; return; }
+  let cls="tb-btn save-btn", txt="💾 Guardar";
+  if(ne){ cls+=" save-err"; txt="⚠ Guardar ("+ne+" con error)"; }
+  else if(nd){ cls+=" save-dirty"; txt="💾 Guardar ("+nd+")"; }
+  el.innerHTML=`<button class="${cls}" title="Guarda de una vez todos los cambios de esta página" onclick="saveAllNow()">${txt}</button>`;
+}
+/* Guarda antes de salir de la página actual (navegación interna / cerrar sesión) */
+function guardNav(go){
+  if(!hasUnsaved()){ go(); return; }
+  vntConfirm("Tienes cambios sin guardar en esta página.\n\n¿Quieres guardarlos antes de salir?",
+    "Guardar y continuar","Salir sin guardar",
+    function(){ saveAllNow(true); setTimeout(go,250); },
+    function(){ clearDirty(); go(); });
+}
+/* Cerrar pestaña o navegador: aviso nativo del navegador */
+window.addEventListener("beforeunload",function(e){ if(!hasUnsaved()) return; e.preventDefault(); e.returnValue=""; return ""; });
 function renderSide(){
   let h='<div class="nav-estado '+(view.type==="estado"?"active":"")+'" onclick="goEstado()"><span class="ico">▣</span> Estado del Informe</div>';
   if(role==="revisor") h+='<div class="nav-estado '+(view.type==="metrics"?"active":"")+'" onclick="goMetrics()"><span class="ico">📊</span> Métricas de actividad</div>';
@@ -436,9 +540,9 @@ function renderSide(){
   document.getElementById("side").innerHTML=h;
 }
 function toggleExp(code){expanded[code]=!expanded[code];renderSide();}
-function goEstado(){view={type:"estado"};renderAll();window.scrollTo(0,0);}
-function goSection(code){view={type:"node",code};renderAll();window.scrollTo(0,0);}
-function goSub(code){const sec=code.split(".")[0];expanded[sec]=true;view={type:"node",code};renderAll();window.scrollTo(0,0);}
+function goEstado(){guardNav(function(){view={type:"estado"};renderAll();window.scrollTo(0,0);});}
+function goSection(code){guardNav(function(){view={type:"node",code};renderAll();window.scrollTo(0,0);});}
+function goSub(code){guardNav(function(){const sec=code.split(".")[0];expanded[sec]=true;view={type:"node",code};renderAll();window.scrollTo(0,0);});}
 
 function areaBadge(area){ if(!area) return `<span class="chip">Sin asignar</span>`; return `<span class="badge" style="background:${areaColor(area)}">${esc(area)}</span>`; }
 /* Color del área. Si el área está en el mapa AREA usa su color oficial; si no (áreas
@@ -462,7 +566,7 @@ let respFilter="";
 function setEstadoTab(t){estadoTab=t;renderMain();}
 function setRespFilter(v){respFilter=v;renderMain();}
 function toggleResp(rid){const k="__r_"+rid;expanded[k]=!expanded[k];renderMain();}
-function goToNode(code){ if(code==="__niif"){go9niif();return;} const sec=String(code).split(".")[0]; if(HAS_SUBS[sec])expanded[sec]=true; view={type:"node",code:code}; renderAll(); window.scrollTo(0,0); }
+function goToNode(code){ if(code==="__niif"){go9niif();return;} guardNav(function(){ const sec=String(code).split(".")[0]; if(HAS_SUBS[sec])expanded[sec]=true; view={type:"node",code:code}; renderAll(); window.scrollTo(0,0); }); }
 /* Salta a un requerimiento puntual: abre su sección, lo despliega y lo centra en pantalla. */
 function goReq(id){ const d=BYID[id]; if(!d) return; goToNode(d.node);
   setTimeout(function(){ const el=document.querySelector('.req[data-id="'+id+'"]');
@@ -499,10 +603,9 @@ function estadoSecHTML(){
   let h=`<table class="estado"><thead><tr><th style="width:46%">Sección</th><th style="width:24%">Estado</th><th>Completitud de campos</th></tr></thead><tbody>`;
   MAIN.forEach(m=>{
     const pct=sectionPct(m.code); const cur=secStatus(m.code); const c=SECST[cur].c;
-    let opts=Object.keys(SECST).map(k=>`<option value="${k}" ${k===cur?"selected":""}>${SECST[k].l}</option>`).join("");
-    h+=`<tr><td><span class="es-name" onclick="goFromEstado('${m.code}')"><span class="num">${m.code}.</span>${esc(m.name)}</span></td><td><span class="statusdot" style="background:${c}"></span><select class="statussel" onchange="setSecStatus('${m.code}',this.value)" style="border-color:${c}55">${opts}</select></td><td><div class="miniprog"><div class="bar"><i style="width:${pct}%"></i></div><div class="v">${pct}%</div></div></td></tr>`;
+    h+=`<tr><td><span class="es-name" onclick="goFromEstado('${m.code}')"><span class="num">${m.code}.</span>${esc(m.name)}</span></td><td><span class="statusdot" style="background:${c}"></span><span class="secst-auto" style="color:${c};border-color:${c}55">${SECST[cur].l}</span></td><td><div class="miniprog"><div class="bar"><i style="width:${pct}%"></i></div><div class="v">${pct}%</div></div></td></tr>`;
   });
-  h+=`</tbody></table><div class="footer-note">El % de completitud se calcula automáticamente según los campos con datos ingresados (los marcados "N/A" cuentan como resueltos). El avance general es el promedio de las ${MAIN.length} secciones. Datos guardados localmente en este navegador.</div>`;
+  h+=`</tbody></table>`;
   return h;
 }
 
@@ -630,7 +733,7 @@ function nodeDisp(code){
   const isSub=code.indexOf(".")>=0; const sec=code.split(".")[0];
   return {sec:sec,isSub:isSub,name:isSub?SUBNAME[code]:SECNAME[code],num:code};
 }
-function go9niif(){expanded["9"]=true;view={type:"node",code:"__niif"};renderAll();window.scrollTo(0,0);}
+function go9niif(){guardNav(function(){expanded["9"]=true;view={type:"node",code:"__niif"};renderAll();window.scrollTo(0,0);});}
 function setNiifEarly(b){FIELDS["niif_early"]=Object.assign({},FIELDS["niif_early"],{v:b?"si":""});save(LS.fields,FIELDS);sbUpsertField("niif_early");renderSide();renderMain();}
 function niifPct(){ let n=0; if(String(fv("niif_s1")).trim())n++; if(String(fv("niif_s2")).trim())n++; return Math.round(n/2*100); }
 function renderNiifBlock(){
@@ -977,12 +1080,20 @@ function unNotify(name,reqId){ if(!name||!reqId) return;
    sent (en revisión)  → el responsable queda bloqueado; el revisor sí puede editar
    rev (aprobado)      → nadie edita, hasta que el revisor presione «Editar» (reabreReq)
    comp                → igual que aprobado                                          */
-const ST_LOCK_ALL={rev:1,comp:1};   // aprobado/completo: bloqueado para todos
-const ST_LOCK_RESP={sent:1};        // en revisión: bloqueado solo para el responsable
+const ST_LOCK_ALL={rev:1,comp:1};   // completado: bloqueado para todos (incluye comentarios)
+const ST_LOCK_RESP={sent:1};        // enviado a revisión: bloqueado para el responsable (turno del revisor)
+const ST_LOCK_REV={fix:1};          // requiere ajustes: bloqueado para el revisor (turno del responsable)
+/* Desbloqueo momentáneo que el revisor puede pedir sin cambiar la etiqueta.
+   Se limpia solo cuando el requerimiento cambia de estado. */
+const REVUNLOCK={};
+function revUnlock(id){ if(role!=="revisor") return; REVUNLOCK[id]=true; renderSide(); renderCurrentKeepOpen(); }
+function clearRevUnlock(id){ delete REVUNLOCK[id]; }
 function canEditStatus(id){ const st=statusOf(id);
   if(ST_LOCK_ALL[st]) return false;
-  if(role!=="revisor" && ST_LOCK_RESP[st]) return false;
-  return true; }
+  if(role==="revisor") return !ST_LOCK_REV[st] || !!REVUNLOCK[id];
+  return !ST_LOCK_RESP[st]; }
+/* Comentar: solo el revisor, y nunca sobre un requerimiento completado. */
+function canComment(id){ return role==="revisor" && !ST_LOCK_ALL[statusOf(id)]; }
 function canEditReq(d){ if(!d) return false; if(!canEditStatus(d.id)) return false;
   if(role==="revisor") return true;
   if(role==="gerente") return respOf(d)===AUTH.name;
@@ -992,14 +1103,15 @@ function canEditNow(){ return role==="revisor"||role==="gerente"; }
 function canEditAns(id){ return canEditNow()&&canEditStatus(id); }
 /* Explica en una línea por qué está bloqueado (vacío si no lo está) */
 function lockNote(d){ if(!d) return ""; const st=statusOf(d.id);
-  if(st==="rev") return "Aprobado. Solo el revisor puede reabrirlo con «Editar».";
-  if(st==="comp") return "Marcado como completo. El revisor debe reabrirlo para editar.";
-  if(st==="sent"&&role!=="revisor") return "Enviado a revisión. No se puede editar hasta que el revisor comente o solicite ajustes.";
+  if(st==="rev"||st==="comp") return "Completado. Todo está bloqueado (incluidos los comentarios) hasta que el revisor presione «Editar».";
+  if(st==="sent"&&role!=="revisor") return "Enviado a revisión. Quedará bloqueado hasta que el revisor apruebe o solicite ajustes.";
+  if(st==="fix"&&role==="revisor"&&!REVUNLOCK[d.id]) return "Solicitaste ajustes. La edición queda en manos del responsable; usa «Editar» si necesitas modificar el contenido tú mismo.";
   if(role==="gerente"&&respOf(d)!==AUTH.name) return "Solo el área responsable puede editar.";
   return ""; }
 function lockNoteHtml(d){ const n=lockNote(d); return n?`<div class="row-actions"><span class="saved-note">${esc(n)}</span></div>`:""; }
 /* El revisor reabre un requerimiento aprobado: vuelve a Borrador y queda editable */
 function reabreReq(id){ const d=BYID[id]; if(role!=="revisor") return;
+  clearRevUnlock(id);
   ANS[id]=Object.assign({text:""},ANS[id],{status:"draft",updated:nowStr()}); save(LS.answers,ANS); sbUpsertAnswer(id);
   COM[id]=COM[id]||[]; COM[id].push({author:"Revisor",ts:nowStr(),text:"↺ Reabierto para edición",kind:""}); save(LS.comments,COM); sbInsertComment(id,COM[id][COM[id].length-1]);
   if(typeof logActivity==="function"&&d)logActivity("save",d);
@@ -1106,10 +1218,11 @@ async function loginRevisor(email,pw){
   AUTH={role:"revisor",name:"Revisor"}; saveAuth(); role="revisor"; if(typeof actLogin==="function")actLogin(); view={type:"estado"}; hideLogin(); await loadFromSupabase(); renderTopbar(); renderAll();
 }
 /* (loginGerente demo eliminado: el responsable entra con código real vía respRequestCode/respVerify.) */
-function logout(){ if(typeof actLogout==="function")actLogout(); try{ if(SB)SB.auth.signOut(); }catch(e){} AUTH={}; saveAuth(); role="gerente"; showLogin(); }
+function logout(){ guardNav(function(){ doLogout(); }); }
+function doLogout(){ if(typeof actLogout==="function")actLogout(); try{ if(SB)SB.auth.signOut(); }catch(e){} AUTH={}; saveAuth(); role="gerente"; showLogin(); }
 
 /* ===== Topbar (reemplaza el toggle libre de rol) ===== */
-function renderTopbar(){ const el=document.getElementById("roleToggle"); if(!el) return;
+function renderTopbar(){ renderSaveChip(); const el=document.getElementById("roleToggle"); if(!el) return;
   if(AUTH.role==="revisor"){
     el.innerHTML=`<span class="who-chip rev">Revisor</span><button class="tb-btn" onclick="goConfig()">⚙ Configuración</button><button class="tb-btn" onclick="goNotif()">✉ Notificaciones${(function(){const n=inboxCount();return n?'<span class="tb-count">'+n+'</span>':'';})()}</button><button class="tb-btn" onclick="logout()">Cerrar sesión</button>`;
   } else if(AUTH.role==="gerente"){
@@ -1145,6 +1258,7 @@ async function loadFromSupabase(){
     DOCS={};   (doc.data||[]).forEach(x=>{ (DOCS[x.requirement_id]=DOCS[x.requirement_id]||[]).push({key:x.storage_path,name:x.name,size:x.size_bytes||0,type:x.content_type||"",uploadedAt:x.uploaded_at||"",uploadedBy:x.uploaded_by||"",storage_path:x.storage_path}); });
     const err=[a,f,t,c,r,s,asg,ppl,doc].map(x=>x&&x.error).filter(Boolean);
     if(err.length) console.warn("[Supabase] Algunas cargas dieron error:",err);
+    await loadPriorYears();
     console.log("[Supabase] Datos cargados → answers:"+(a.data||[]).length+" fields:"+(f.data||[]).length+" tables:"+(t.data||[]).length+" comments:"+(c.data||[]).length+" refs:"+(r.data||[]).length+" secciones:"+(s.data||[]).length+" asignaciones:"+(asg.data||[]).length+" personas:"+(ppl.data||[]).length+" docs:"+(doc.data||[]).length);
   }catch(e){ console.error("[Supabase] Error al cargar datos:",e); }
 }
@@ -1172,16 +1286,40 @@ function reqOfTable(id){ if(id in TABLE2REQ)return TABLE2REQ[id];
   if(/^t_comint_\d+$/.test(String(id))) return (("t_com" in TABLE2REQ)?TABLE2REQ["t_com"]:null);
   const b=String(id).replace(/__(g|sd)$/,""); return (b in TABLE2REQ)?TABLE2REQ[b]:null; }
 const _sbTimers={};
+/* ---- Registro de escrituras fallidas -------------------------------------
+   Antes un rechazo de RLS solo iba a console.warn: la pantalla parecía haber
+   guardado y el dato nunca llegaba al servidor. Ahora se anota, se muestra en
+   la barra superior y el botón «Guardar» lo reintenta.                       */
+const SBERR={};
+function sbNote(kind,id,err){
+  const k=kind+":"+id;
+  if(err){ SBERR[k]={kind:kind,id:id,msg:(err.message||String(err)),ts:nowStr()}; console.warn("[SB] "+k+":",err.message||err); }
+  else { delete SBERR[k]; }
+  renderSaveChip();
+}
+function sbErrCount(){ return Object.keys(SBERR).length; }
+function sbRetryAll(){
+  const keys=Object.keys(SBERR); if(!keys.length) return 0;
+  keys.forEach(function(k){ const e=SBERR[k];
+    if(e.kind==="answers") sbUpsertAnswer(e.id);
+    else if(e.kind==="fields") sbUpsertField(e.id);
+    else if(e.kind==="table_data") sbUpsertTable(e.id);
+    else if(e.kind==="assignments") sbUpsertAssign(e.id);
+    else if(e.kind==="section_status") sbUpsertSection(e.id);
+    else if(e.kind==="refs") sbSyncRefs(e.id);
+  });
+  return keys.length;
+}
 function sbDebounce(key,fn,ms){ clearTimeout(_sbTimers[key]); _sbTimers[key]=setTimeout(fn,ms||600); }
 function sbWho(){ return (AUTH&&AUTH.name)||null; }
-function sbUpsertField(id){ if(!SB)return; sbDebounce("f:"+id,function(){ const fl=FIELDS[id]||{}; SB.from("fields").upsert({field_id:id,requirement_id:reqOfField(id),value:(fl.v==null?null:String(fl.v)),na:!!fl.na,updated_by:sbWho(),updated_at:new Date().toISOString()},{onConflict:"field_id"}).then(r=>{ if(r.error)console.warn("[SB] fields "+id+":",r.error.message); }); }); }
-function sbUpsertAnswer(id){ if(!SB)return; const a=ANS[id]||{}; SB.from("answers").upsert({requirement_id:id,text:(a.text==null?null:a.text),status:a.status||"pend",updated_by:sbWho(),updated_at:new Date().toISOString()},{onConflict:"requirement_id"}).then(r=>{ if(r.error)console.warn("[SB] answers "+id+":",r.error.message); }); }
-function sbUpsertTable(tid){ if(!SB)return; sbDebounce("t:"+tid,function(){ SB.from("table_data").upsert({table_id:tid,requirement_id:reqOfTable(tid),rows:(TBL[tid]!==undefined?TBL[tid]:[]),updated_by:sbWho(),updated_at:new Date().toISOString()},{onConflict:"table_id"}).then(r=>{ if(r.error)console.warn("[SB] table_data "+tid+":",r.error.message); }); }); }
+function sbUpsertField(id){ if(!SB)return; sbDebounce("f:"+id,function(){ const fl=FIELDS[id]||{}; SB.from("fields").upsert({field_id:id,requirement_id:reqOfField(id),value:(fl.v==null?null:String(fl.v)),na:!!fl.na,updated_by:sbWho(),updated_at:new Date().toISOString()},{onConflict:"field_id"}).then(r=>{ sbNote("fields",id,r.error); }); }); }
+function sbUpsertAnswer(id){ if(!SB)return; const a=ANS[id]||{}; SB.from("answers").upsert({requirement_id:id,text:(a.text==null?null:a.text),status:a.status||"pend",updated_by:sbWho(),updated_at:new Date().toISOString()},{onConflict:"requirement_id"}).then(r=>{ sbNote("answers",id,r.error); }); }
+function sbUpsertTable(tid){ if(!SB)return; sbDebounce("t:"+tid,function(){ SB.from("table_data").upsert({table_id:tid,requirement_id:reqOfTable(tid),rows:(TBL[tid]!==undefined?TBL[tid]:[]),updated_by:sbWho(),updated_at:new Date().toISOString()},{onConflict:"table_id"}).then(r=>{ sbNote("table_data",tid,r.error); }); }); }
 /* ----- Etapa 3.3: asignaciones, estado de secciones, comentarios y referencias ----- */
-function sbUpsertAssign(reqId){ if(!SB)return; const a=ASSIGN[reqId]||{}; SB.from("assignments").upsert({requirement_id:reqId,responsable:(a.responsable||null),area:(a.area||null),updated_at:new Date().toISOString()},{onConflict:"requirement_id"}).then(r=>{ if(r.error)console.warn("[SB] assignments "+reqId+":",r.error.message); }); }
-function sbUpsertSection(code){ if(!SB)return; SB.from("section_status").upsert({seccion:code,status:SEC[code],updated_at:new Date().toISOString()},{onConflict:"seccion"}).then(r=>{ if(r.error)console.warn("[SB] section_status "+code+":",r.error.message); }); }
-function sbInsertComment(reqId,c){ if(!SB||!c)return; SB.from("comments").insert({requirement_id:reqId,author:(c.author||null),text:(c.text||null),kind:(c.kind||null)}).then(r=>{ if(r.error)console.warn("[SB] comments "+reqId+":",r.error.message); }); }
-function sbSyncRefs(reqId){ if(!SB)return; SB.from("refs").delete().eq("requirement_id",reqId).then(function(){ const arr=REF[reqId]||[]; if(arr.length){ SB.from("refs").insert(arr.map(function(r){return {requirement_id:reqId,label:(r.label||null),url:(r.url||"#")};})).then(function(rr){ if(rr.error)console.warn("[SB] refs "+reqId+":",rr.error.message); }); } }); }
+function sbUpsertAssign(reqId){ if(!SB)return; const a=ASSIGN[reqId]||{}; SB.from("assignments").upsert({requirement_id:reqId,responsable:(a.responsable||null),area:(a.area||null),updated_at:new Date().toISOString()},{onConflict:"requirement_id"}).then(r=>{ sbNote("assignments",reqId,r.error); }); }
+function sbUpsertSection(code){ if(!SB)return; SB.from("section_status").upsert({seccion:code,status:SEC[code],updated_at:new Date().toISOString()},{onConflict:"seccion"}).then(r=>{ sbNote("section_status",code,r.error); }); }
+function sbInsertComment(reqId,c){ if(!SB||!c)return; SB.from("comments").insert({requirement_id:reqId,author:(c.author||null),text:(c.text||null),kind:(c.kind||null)}).then(r=>{ sbNote("comments",reqId,r.error); }); }
+function sbSyncRefs(reqId){ if(!SB)return; SB.from("refs").delete().eq("requirement_id",reqId).then(function(){ const arr=REF[reqId]||[]; if(arr.length){ SB.from("refs").insert(arr.map(function(r){return {requirement_id:reqId,label:(r.label||null),url:(r.url||"#")};})).then(function(rr){ sbNote("refs",reqId,rr.error); }); } }); }
 
 async function boot(){ try{var _bl=document.getElementById("brandLogo"); if(_bl)_bl.src=LOGO_VT;}catch(e){}
   if(AUTH&&AUTH.role){   // revisor o responsable: ambos usan sesión real de Supabase
@@ -1194,12 +1332,12 @@ async function boot(){ try{var _bl=document.getElementById("brandLogo"); if(_bl)
 }
 
 /* ===== Vista: Configuración (revisor) ===== */
-function goConfig(){ if(role!=="revisor")return; view={type:"config"}; renderAll(); window.scrollTo(0,0); }
+function goConfig(){ if(role!=="revisor")return; guardNav(function(){ view={type:"config"}; renderAll(); window.scrollTo(0,0); }); }
 function renderConfig(){
   const di=deadlineInfo(); const c=NOTIF.config;
   let h=`<div class="crumb"><b>Configuración de recordatorios</b></div><div class="sec-title">Configuración</div><div class="sec-sub">Periodos de recordatorio, plantillas de notificación y correos de los responsables. Solo Revisor.</div>`;
   h+=deadlineBanner();
-  h+=`<div class="fcard"><h3>Cadencia de recordatorios</h3><div class="desc">Frecuencia con que se recordará a cada responsable mientras tenga requerimientos pendientes. El envío se ejecutará vía backend (Fase 2).</div>
+  h+=`<div class="fcard"><h3>Cadencia de recordatorios</h3><div class="desc">Frecuencia con que se recordará a cada responsable mientras tenga requerimientos pendientes. Esta frecuencia la usa el envío automático del backend; los envíos manuales salen cuando presionas «Enviar ahora».</div>
     <div class="gfield"><label class="glbl">Frecuencia</label><select onchange="setCfg('cadence',this.value)">${["semanal","quincenal","mensual"].map(o=>`<option value="${o}" ${c.cadence===o?'selected':''}>${o.charAt(0).toUpperCase()+o.slice(1)}</option>`).join("")}</select></div>
     <div class="saved-note">Fecha límite (meta 100%): <b>${di.weekStr}</b>.</div></div>`;
   h+=`<div class="fcard"><h3>Plantilla — Notificación de asignación (una vez por persona)</h3><div class="desc">Campos: {nombre} {area} {total} {fecha_limite}.</div><textarea class="white" style="min-height:150px" oninput="setCfg('tplAssign',this.value)">${esc(c.tplAssign)}</textarea></div>`;
@@ -1212,12 +1350,20 @@ function renderConfig(){
     <div class="row-sep">Agregar nuevo responsable</div>
     <div class="addperson"><input type="text" id="np-name" placeholder="Nombre y apellido"/><input list="vnt-arealist" id="np-area" placeholder="Área (escribe o elige)"/><input type="text" id="np-email" placeholder="correo@vantrust.cl"/><button class="btn ghost" onclick="addPerson(document.getElementById('np-name').value,document.getElementById('np-area').value,document.getElementById('np-email').value)">+ Agregar responsable</button></div>
   </div>`;
+  const conPend=peopleNames().filter(function(n){ return pendingForName(n).length; });
+  h+=`<div class="fcard"><h3>Enviar correos</h3><div class="desc">Revisa el texto exacto de cada correo en <b>Notificaciones</b> antes de mandarlo. Hoy hay <b>${conPend.length}</b> responsable(s) con requerimientos pendientes.</div>
+    <div class="row-actions"><button class="btn ghost" onclick="goNotif()">✉ Ver y enviar uno por uno</button><button class="btn primary" onclick="sendAllReminders()">✉ Enviar todos los recordatorios</button></div>
+    <div class="saved-note">Los correos salen por el backend ya desplegado (Gmail en el piloto). No se envía nada sin que lo presiones.</div></div>`;
+  const pend=cicloPendientes();
+  h+=`<div class="fcard"><h3>Cierre de ciclo anual</h3><div class="desc">Éste es el único lugar donde se <b>archiva</b>. Cuando todos los requerimientos estén Completados y ya hayas exportado el JSON, este botón guarda toda la información del año como «año anterior» y deja el formulario vacío para el ciclo siguiente. Lo archivado se recupera después con «Pegar año pasado» en cada requerimiento. El botón «Limpiar» de cada requerimiento, en cambio, solo borra: no guarda copia.</div>
+    <div class="saved-note" style="color:${pend.length?'var(--burgundy)':'#2e7d5b'}">${pend.length?('⚠️ Faltan '+pend.length+' requerimiento(s) por aprobar.'):('✓ Los '+DATA.filter(countableReq).length+' requerimientos contestables están aprobados.')}</div>
+    <div class="row-actions"><button class="btn ghost" onclick="exportJSON()">⬇ Exportar respuestas (JSON)</button><button class="btn limpiar" onclick="limpiarCiclo()">🧹 Cerrar ciclo ${YEAR} y limpiar todo</button></div></div>`;
   h+=`<div class="footer-note">Datos guardados en el servidor (Supabase). El envío de correos usa el backend ya desplegado.</div>`;
   document.getElementById("main").innerHTML=h;
 }
 
 /* ===== Vista: Notificaciones (revisor) ===== */
-function goNotif(){ if(role!=="revisor")return; view={type:"notif"}; renderAll(); window.scrollTo(0,0); }
+function goNotif(){ if(role!=="revisor")return; guardNav(function(){ view={type:"notif"}; renderAll(); window.scrollTo(0,0); }); }
 
 /* ===== Bandeja de recibidos: lo que los responsables enviaron a revisión ===== */
 function inboxItems(){ return DATA.filter(d=>countableReq(d)&&statusOf(d.id)==="sent")
@@ -1239,9 +1385,9 @@ function inboxBlock(){
 }
 function renderNotif(){
   const di=deadlineInfo();
-  let h=`<div class="crumb"><b>Notificaciones</b></div><div class="sec-title">Notificaciones</div><div class="sec-sub">Cola de avisos a responsables. El envío automático se habilitará con el backend (Fase 2); por ahora se muestra la cola y el contenido generado.</div>`;
+  let h=`<div class="crumb"><b>Notificaciones</b></div><div class="sec-title">Notificaciones</div><div class="sec-sub">Correos a los responsables. Revisa el contenido y presiona «Enviar ahora»: sale de inmediato por el backend ya desplegado.</div>`;
   h+=inboxBlock();
-  h+=`<div class="gnote" style="border-left-color:#3b6ea5;background:#eef4fb;color:#2b5580">📨 El sitio es estático: estos correos no se envían solos. Con backend se enviarán automáticamente según la cadencia configurada (${esc(NOTIF.config.cadence)}).</div>`;
+  h+=`<div class="gnote" style="border-left-color:#3b6ea5;background:#eef4fb;color:#2b5580">📨 Ningún correo sale solo: cada uno se manda cuando presionas «Enviar ahora». Los envíos automáticos según la cadencia configurada (${esc(NOTIF.config.cadence)}) los dispara el backend por separado.</div>`;
   // Asignación (una vez)
   h+=`<div class="block-h" style="margin-top:16px">Avisos de asignación (una vez por persona)</div>`;
   const aq=NOTIF.queue.filter(x=>x.type==="assign"&&!x.sent);
@@ -1259,8 +1405,9 @@ function renderNotif(){
   peopleNames().forEach(n=>{ const pend=pendingForName(n); if(!pend.length) return; any=true;
     const lista=pend.map(d=>"• "+reqLabel(d)+" — "+reqShort(d)).join("\n");
     const ctx={nombre:n,area:areaForPerson(n),pendientes:pend.length,lista:lista,fecha_limite:di.weekStr};
-    h+=notifCard(n, emailOf(n), "Recordatorio: requerimientos pendientes — Memoria Anual Integrada VanTrust AGF", tplSubstitute(NOTIF.config.tplReminder,ctx), pend.length+" pendiente(s)"); });
+    h+=notifCard(n, emailOf(n), "Recordatorio: requerimientos pendientes — Memoria Anual Integrada VanTrust AGF", tplSubstitute(NOTIF.config.tplReminder,ctx), pend.length+" pendiente(s)", {kind:"reminder",name:n}); });
   if(!any) h+=`<div class="no-comments">No hay responsables con pendientes. 🎉</div>`;
+  else h+=`<div class="row-actions" style="margin-top:10px"><button class="btn primary" onclick="sendAllReminders()">✉ Enviar todos los recordatorios</button><span class="saved-note">Manda un correo a cada responsable con pendientes que tenga correo registrado.</span></div>`;
   h+=`<div class="footer-note">Generado a partir del estado actual del informe. Cadencia: ${esc(NOTIF.config.cadence)} · meta 100%: ${di.weekStr}.</div>`;
   document.getElementById("main").innerHTML=h;
 }
@@ -1312,13 +1459,52 @@ async function sendAssignMail(name){
   vntAlert("Correo enviado a "+name+" ("+email+") con "+reqs.length+" requerimiento(s).");
   renderAll();
 }
+/* Punto 8 — Recordatorio de pendientes: mismo camino que el aviso de asignación
+   (Edge Function send-now, validada por rol contra app_users). */
+async function sendReminderMail(name){
+  if(role!=="revisor") return;
+  const email=emailOf(name);
+  if(!email){ vntAlert("«"+name+"» no tiene correo registrado. Agrégalo en Configuración."); return; }
+  const pend=pendingForName(name);
+  if(!pend.length){ vntAlert("«"+name+"» no tiene requerimientos pendientes."); return; }
+  const di=deadlineInfo();
+  const lista=pend.map(function(d){ return "• "+reqLabel(d)+" — "+reqShort(d); }).join("\n");
+  const ctx={nombre:name,area:areaForPerson(name),pendientes:pend.length,lista:lista,fecha_limite:di.weekStr};
+  const subject="Recordatorio: requerimientos pendientes — Memoria Anual Integrada VanTrust AGF";
+  const body=tplSubstitute(NOTIF.config.tplReminder,ctx);
+  const res=await sbEnqueueMail({to:email,name:name,subject:subject,body:body,kind:"reminder"});
+  if(!res.ok){ vntAlert("No se pudo enviar el recordatorio a "+name+": "+(res.error||"error desconocido")); return false; }
+  vntAlert("Recordatorio enviado a "+name+" ("+email+") con "+pend.length+" pendiente(s).");
+  return true;
+}
+async function sendAllReminders(){
+  if(role!=="revisor") return;
+  const names=peopleNames().filter(function(n){ return pendingForName(n).length && emailOf(n); });
+  const sinCorreo=peopleNames().filter(function(n){ return pendingForName(n).length && !emailOf(n); });
+  if(!names.length){ vntAlert("No hay a quién enviar: nadie con pendientes tiene correo registrado."); return; }
+  vntConfirm("Se enviará un recordatorio a "+names.length+" responsable(s):\n\n"+names.join("\n")
+    +(sinCorreo.length?"\n\nSin correo registrado (no se les enviará): "+sinCorreo.join(", "):""),
+    "Enviar "+names.length+" correo(s)","Cancelar", async function(){
+      const di=deadlineInfo(); let ok=0; const errores=[];
+      for(let i=0;i<names.length;i++){ const n=names[i];
+        const pend=pendingForName(n);
+        const lista=pend.map(function(d){ return "• "+reqLabel(d)+" — "+reqShort(d); }).join("\n");
+        const ctx={nombre:n,area:areaForPerson(n),pendientes:pend.length,lista:lista,fecha_limite:di.weekStr};
+        const res=await sbEnqueueMail({to:emailOf(n),name:n,
+          subject:"Recordatorio: requerimientos pendientes — Memoria Anual Integrada VanTrust AGF",
+          body:tplSubstitute(NOTIF.config.tplReminder,ctx),kind:"reminder"});
+        if(res.ok) ok++; else errores.push(n+": "+(res.error||"error")); }
+      vntAlert("Recordatorios enviados: "+ok+" de "+names.length+(errores.length?"\n\nCon problemas:\n"+errores.join("\n"):""));
+    });
+}
 function notifCard(name,email,subject,body,badge,send){
   const acc=accId("notif-"+name+"-"+subject);
   const open=!!ACC[acc];
   let acts="";
-  if(send&&send.kind==="assign"){
+  if(send&&(send.kind==="assign"||send.kind==="reminder")){
+    const fn = send.kind==="assign" ? "sendAssignMail" : "sendReminderMail";
     acts=email
-      ? `<div class="row-actions"><button class="btn primary" onclick="sendAssignMail('${esc(name).replace(/'/g,"\\'")}')">✉ Enviar ahora</button><span class="saved-note" id="sm-${accId('sm-'+name)}"></span></div>`
+      ? `<div class="row-actions"><button class="btn primary" onclick="${fn}('${esc(name).replace(/'/g,"\\'")}')">✉ Enviar ahora</button><span class="saved-note" id="sm-${accId('sm-'+name)}"></span></div>`
       : `<div class="row-actions"><span class="saved-note">Sin correo registrado: agrégalo en Configuración para poder enviar.</span></div>`;
   }
   return `<div class="acc ${open?'open':''}" data-acc="${acc}"><div class="acc-h" onclick="toggleAcc('${acc}')"><span>✉ ${esc(name)} &lt;${esc(email||'sin correo')}&gt; · <span class="saved-note">${esc(badge)}</span></span><span class="acc-c">▾</span></div><div class="acc-b"><div class="notif-mail"><div><b>Para:</b> ${esc(email||'(sin correo registrado)')}</div><div><b>Asunto:</b> ${esc(subject)}</div><div class="notif-body">${esc(body)}</div></div>${acts}</div></div>`;
@@ -1379,7 +1565,7 @@ function actEditsReq(id){ return ACTIVITY.filter(e=>e.requirement_id===id&&(e.ev
 function actLastTsUser(name){ const a=actByUser(name).map(e=>e.ts).sort(); return a.length?a[a.length-1]:null; }
 
 /* ---------- navegación ---------- */
-function goMetrics(){ if(role!=="revisor")return; view={type:"metrics"}; renderAll(); window.scrollTo(0,0); }
+function goMetrics(){ if(role!=="revisor")return; guardNav(function(){ view={type:"metrics"}; renderAll(); window.scrollTo(0,0); }); }
 let metFiltSec="", metFiltUser="";
 function setMetSec(v){ metFiltSec=v; renderMetrics(); }
 function setMetUser(v){ metFiltUser=v; renderMetrics(); }
@@ -1472,11 +1658,15 @@ function exportActivityXlsx(){
   const dt=new Date(); const fn="metricas_actividad_"+dt.getFullYear()+"-"+String(dt.getMonth()+1).padStart(2,"0")+"-"+String(dt.getDate()).padStart(2,"0")+".xlsx";
   XLSX.writeFile(wb,fn);
 }
-/* ===== Point 3 — "Pegar info. año anterior" (copy previous-year t-1 data into t) ===== */
+/* ===== Punto 3 (ronda junio) — "Pegar año pasado": copia los datos del año t-1 ===== */
 /* PREVDATA shape: {answers:{reqId:{text}}, fields:{fieldId:{v,na}}, tables:{tid:[rows]}} (year 2025). */
 /* Narrative requirements also fall back to PREVANS (keyed by sub||item) which already exists. */
 const PREVDATA={"_year": 2025, "_note": "Datos estructurados de la memoria 2025 (año anterior t-1). Vacio en piloto: las respuestas narrativas usan prev_answers.json como respaldo. Cargar aqui los datos 2025 por reqId (answers), fieldId (fields) y tableId (tables) cuando esten disponibles.", "answers": {}, "fields": {}, "tables": {}};
-function _pd(){ return (PREVDATA&&typeof PREVDATA==="object")?PREVDATA:{}; }
+function _pd(){ const b=(PREVDATA&&typeof PREVDATA==="object")?PREVDATA:{};
+  const P=(typeof PRIOR!=="undefined")?PRIOR:{answers:{},fields:{},tables:{}};
+  return {answers:Object.assign({},b.answers||{},P.answers||{}),
+          fields: Object.assign({},b.fields ||{},P.fields ||{}),
+          tables: Object.assign({},b.tables ||{},P.tables ||{})}; }
 function prevAns(d){ const pd=_pd(); if(pd.answers&&pd.answers[d.id]&&pd.answers[d.id].text!=null) return pd.answers[d.id].text; const pa=PREVANS[sk(d)]; return (pa&&pa.ans!=null)?pa.ans:null; }
 /* collect declared field ids + table ids for a guided requirement (skip calc/note) */
 function schemaIds(d){ const s=schemaOf(d); const fields=[],tables=[]; if(s&&Array.isArray(s.fields)){ s.fields.forEach(f=>{ if(f.t==="table"||f.t==="comites"){ if(f.id)tables.push(f.id); } else if(f.id&&f.t!=="tcalc"&&f.t!=="note"){ fields.push(f.id); } }); } return {fields,tables}; }
@@ -1492,6 +1682,137 @@ function prevValuesFor(d){
   return out;
 }
 function hasPrev(d){ return prevValuesFor(d).has; }
+
+/* ===================================================================
+   Punto 6 — Botón «Limpiar» + archivo de años anteriores
+   -------------------------------------------------------------------
+   Limpiar NO borra: primero archiva el contenido del requerimiento en la
+   tabla prior_year_data con el año en curso, y recién después vacía el
+   requerimiento. Así lo que se respondió este año queda disponible como
+   «año anterior» y el botón «Pegar año pasado» lo puede recuperar en el
+   ciclo siguiente. Es la contraparte exacta de «Pegar año pasado».
+   =================================================================== */
+let PRIOR={answers:{},fields:{},tables:{},yearOf:{},maxYear:PREV};
+
+async function loadPriorYears(){
+  if(!SB) return;
+  let r; try{ r=await SB.from("prior_year_data").select("year,kind,ref_id,requirement_id,payload"); }
+  catch(e){ console.warn("[SB] prior_year_data:",e); return; }
+  if(r.error){ console.warn("[SB] prior_year_data:",r.error.message); return; }
+  const best={}, P={answers:{},fields:{},tables:{},yearOf:{},maxYear:PREV};
+  (r.data||[]).forEach(function(x){ const k=x.kind+":"+x.ref_id;
+    if(best[k]&&best[k].year>=x.year) return; best[k]=x; });
+  Object.keys(best).forEach(function(k){ const x=best[k];
+    if(x.year>P.maxYear) P.maxYear=x.year;
+    if(x.kind==="answer"){ P.answers[x.ref_id]=x.payload||{}; }
+    else if(x.kind==="field"){ P.fields[x.ref_id]=x.payload||{}; }
+    else if(x.kind==="table"){ P.tables[x.ref_id]=Array.isArray(x.payload)?x.payload:[]; }
+    const rq=x.requirement_id||(x.kind==="answer"?x.ref_id:null);
+    if(rq&&(!P.yearOf[rq]||P.yearOf[rq]<x.year)) P.yearOf[rq]=x.year; });
+  PRIOR=P;
+  console.log("[Supabase] Año anterior cargado → "+(r.data||[]).length+" registros (año más reciente: "+P.maxYear+")");
+}
+/* Año del que provienen los datos archivados de este requerimiento */
+function prevYearOf(d){ return (d&&PRIOR.yearOf[d.id])||PREV; }
+
+/* ---- Reunir TODO lo que pertenece a un requerimiento ---- */
+function fieldIdsOf(d){
+  const out={}; schemaIds(d).fields.forEach(function(i){ out[i]=1; });
+  out[naId(d)]=1;
+  Object.keys(FIELDS).forEach(function(i){ if(reqOfField(i)===d.id) out[i]=1; });
+  return Object.keys(out);
+}
+function tableIdsOf(d){
+  const out={}; schemaIds(d).tables.forEach(function(i){ out[i]=1; });
+  Object.keys(typeof TBL!=="undefined"?TBL:{}).forEach(function(i){ if(reqOfTable(i)===d.id) out[i]=1; });
+  return Object.keys(out);
+}
+
+function canLimpiar(d){ return role==="revisor" && !!d; }
+function limpiarBtn(d){ if(!canLimpiar(d)) return "";
+  return `<button type="button" class="btn ghost limpiar" title="Borra la respuesta, los campos, las tablas y los comentarios de este requerimiento" onclick="limpiarReq('${d.id}')">🧹 Limpiar</button>`; }
+function limpiarRow(d){ const b=limpiarBtn(d); return b?`<div class="row-actions">${b}</div>`:""; }
+
+function limpiarReq(id){
+  if(role!=="revisor") return; const d=BYID[id]; if(!d) return;
+  const nf=fieldIdsOf(d).filter(function(i){ return FIELDS[i]!==undefined; }).length;
+  const nt=tableIdsOf(d).filter(function(i){ return TBL[i]!==undefined; }).length;
+  const nc=(COM[id]||[]).length;
+  const hay=(ansText(id).trim()!=="")||nf||nt||nc;
+  if(!hay){ vntAlert("Este requerimiento ya está vacío: no hay nada que limpiar."); return; }
+  const msg="Vas a borrar el contenido de «"+reqLabel(d)+" — "+reqShort(d)+"».\n\n"
+    +"Se elimina: "+(ansText(id).trim()?"la respuesta, ":"")+nf+" campo(s), "+nt+" tabla(s) y "+nc+" comentario(s).\n"
+    +"El requerimiento vuelve a «Pendiente».\n\n"
+    +"Esto NO guarda copia. El archivado como «año anterior» se hace al final del "
+    +"ciclo, desde Configuración → Cierre de ciclo anual.";
+  vntConfirm(msg,"Sí, limpiar","Cancelar",function(){ doLimpiar(d,true,false); });
+}
+
+/* Vacía un requerimiento. Con archivar=true guarda antes una copia en
+   prior_year_data (eso lo usa el cierre de ciclo); con archivar=false solo borra. */
+async function doLimpiar(d,rerender,archivar){
+  if(archivar===undefined) archivar=true;
+  const id=d.id, year=YEAR;
+  const fids=fieldIdsOf(d).filter(function(i){ return FIELDS[i]!==undefined; });
+  const tids=tableIdsOf(d).filter(function(i){ return TBL[i]!==undefined; });
+  const rows=[];
+  const a=ANS[id];
+  if(a&&(a.text||"").trim()!=="") rows.push({year:year,kind:"answer",ref_id:id,requirement_id:id,payload:{text:a.text,status:a.status||"pend",updated:a.updated||""}});
+  fids.forEach(function(i){ rows.push({year:year,kind:"field",ref_id:i,requirement_id:id,payload:FIELDS[i]||{}}); });
+  tids.forEach(function(i){ rows.push({year:year,kind:"table",ref_id:i,requirement_id:id,payload:TBL[i]||[]}); });
+
+  if(archivar&&SB&&rows.length){
+    const w=await SB.from("prior_year_data").upsert(rows,{onConflict:"year,kind,ref_id"});
+    if(w.error){ vntAlert("No se pudo archivar la información:\n"+w.error.message+"\n\nNo se borró nada."); return false; }
+  }
+  if(SB){
+    const del=[ SB.from("answers").delete().eq("requirement_id",id),
+                SB.from("comments").delete().eq("requirement_id",id) ];
+    if(fids.length) del.push(SB.from("fields").delete().in("field_id",fids));
+    if(tids.length) del.push(SB.from("table_data").delete().in("table_id",tids));
+    const res=await Promise.all(del);
+    const err=res.map(function(x){ return x&&x.error; }).filter(Boolean);
+    if(err.length){ vntAlert("La información quedó archivada, pero no se pudo borrar todo:\n"+err.map(function(e){return e.message;}).join("\n")); }
+  }
+  /* memoria local (y el snapshot en pantalla, solo si se archivó) */
+  delete ANS[id]; save(LS.answers,ANS);
+  fids.forEach(function(i){ if(archivar) PRIOR.fields[i]=(FIELDS[i]||{}); delete FIELDS[i]; });
+  save(LS.fields,FIELDS);
+  tids.forEach(function(i){ if(archivar) PRIOR.tables[i]=(TBL[i]||[]); delete TBL[i]; });
+  if(typeof tblSave==="function") tblSave();
+  if(archivar){
+    if(a&&(a.text||"").trim()!=="") PRIOR.answers[id]={text:a.text};
+    PRIOR.yearOf[id]=year; if(year>PRIOR.maxYear) PRIOR.maxYear=year;
+  }
+  delete COM[id]; save(LS.comments,COM);
+  clearRevUnlock(id);
+  if(typeof recalc==="function"){ try{recalc();}catch(e){} }
+  if(rerender){ renderSide(); renderCurrentKeepOpen(); }
+  return true;
+}
+
+/* ---- Cierre de ciclo: limpiar TODOS los requerimientos de una vez ---- */
+function cicloPendientes(){ return DATA.filter(function(d){ return countableReq(d) && ["rev","comp"].indexOf(statusOf(d.id))<0; }); }
+function limpiarCiclo(){
+  if(role!=="revisor") return;
+  const pend=cicloPendientes();
+  const conDatos=DATA.filter(function(d){ return countableReq(d) && (ansText(d.id).trim()!=="" || fieldIdsOf(d).some(function(i){return FIELDS[i]!==undefined;}) || tableIdsOf(d).some(function(i){return TBL[i]!==undefined;})); });
+  if(!conDatos.length){ vntAlert("No hay información cargada: el ciclo ya está vacío."); return; }
+  let msg="CIERRE DE CICLO "+YEAR+"\n\n"
+    +"Se archivarán "+conDatos.length+" requerimiento(s) como año anterior ("+YEAR+") y quedarán vacíos, listos para el ciclo "+(YEAR+1)+".\n"
+    +"También se borran todos los comentarios.\n\n";
+  msg+= pend.length
+    ? "⚠️ ATENCIÓN: "+pend.length+" requerimiento(s) todavía NO están Completados. Lo normal es cerrar el ciclo cuando todos están aprobados.\n\n"
+    : "✓ Todos los requerimientos están Completados.\n\n";
+  msg+="Esta acción no se puede deshacer desde el sitio.";
+  vntConfirm(msg,"Sí, cerrar el ciclo "+YEAR,"Cancelar",function(){ runLimpiarCiclo(conDatos); });
+}
+async function runLimpiarCiclo(list){
+  let ok=0,fail=0;
+  for(let i=0;i<list.length;i++){ const r=await doLimpiar(list[i],false,true); if(r)ok++; else fail++; }
+  renderSide(); renderMain();
+  vntAlert("Cierre de ciclo terminado.\n\nArchivados y limpiados: "+ok+"\nCon problemas: "+fail+"\n\nLa información quedó disponible como «año anterior» ("+YEAR+").");
+}
 function currentHasData(d){
   if(ansText(d.id).trim()!=="") return true;
   const sid=schemaIds(d);
@@ -1522,13 +1843,13 @@ function pasteFromPrev(d){
   } else { applyPrev(d,src); }
 }
 /* small secondary button rendered in the card header (next to the status chip) */
-function prevBtn(d){ if(!canEditReq(d)||!hasPrev(d)) return ""; return `<button type="button" class="prevpaste" title="Copiar respuesta del año anterior (${PREV})" onclick="event.stopPropagation();pasteFromPrev(BYID['${d.id}'])">📋 Pegar info. año anterior</button>`; }
+function prevBtn(d){ if(!canEditReq(d)||!hasPrev(d)) return ""; return `<button type="button" class="btn ghost prevpaste" title="Copiar la respuesta del año anterior (${prevYearOf(d)}) en este requerimiento" onclick="event.stopPropagation();pasteFromPrev(BYID['${d.id}'])">📋 Pegar año pasado</button>`; }
 
 /* ===== generic confirm / alert modal (reused across features) ===== */
 function vntModalEl(){ let el=document.getElementById("vntmodal"); if(!el){ el=document.createElement("div"); el.id="vntmodal"; el.className="vnt-modal-bg"; el.style.display="none"; el.addEventListener("click",function(e){ if(e.target===el) vntClose(); }); document.body.appendChild(el); } return el; }
-function vntClose(){ const el=document.getElementById("vntmodal"); if(el){ el.style.display="none"; el.innerHTML=""; } window.__vntYes=null; }
-function vntConfirm(msg,yes,no,onYes){ const el=vntModalEl(); el.style.display="flex"; window.__vntYes=onYes;
-  el.innerHTML=`<div class="vnt-modal"><div class="vnt-modal-b">${esc(msg)}</div><div class="vnt-modal-acts"><button class="btn ghost" onclick="vntClose()">${esc(no||"Cancelar")}</button><button class="btn primary" onclick="var f=window.__vntYes;vntClose();if(f)f();">${esc(yes||"Aceptar")}</button></div></div>`;
+function vntClose(){ const el=document.getElementById("vntmodal"); if(el){ el.style.display="none"; el.innerHTML=""; } window.__vntYes=null; window.__vntNo=null; }
+function vntConfirm(msg,yes,no,onYes,onNo){ const el=vntModalEl(); el.style.display="flex"; window.__vntYes=onYes; window.__vntNo=onNo;
+  el.innerHTML=`<div class="vnt-modal"><div class="vnt-modal-b">${esc(msg)}</div><div class="vnt-modal-acts"><button class="btn ghost" onclick="var f=window.__vntNo;vntClose();if(f)f();">${esc(no||"Cancelar")}</button><button class="btn primary" onclick="var f=window.__vntYes;vntClose();if(f)f();">${esc(yes||"Aceptar")}</button></div></div>`;
 }
 function vntAlert(msg){ const el=vntModalEl(); el.style.display="flex"; el.innerHTML=`<div class="vnt-modal"><div class="vnt-modal-b">${esc(msg)}</div><div class="vnt-modal-acts"><button class="btn primary" onclick="vntClose()">Entendido</button></div></div>`; }
 /* ===== Point 2 — Repositorio dividido: Box A (documentos de respaldo) + Box B (autocompletar) =====
@@ -1647,26 +1968,55 @@ function showAutocRes(id,res){ const el=document.getElementById("autocRes-"+id);
    todas las tablas 5.1.1–5.3. Procesa en memoria; no almacena el archivo. */
 const CATS5=["Alta Gerencia","Gerencia","Jefatura","Operario","Fuerza de Venta","Administrativo","Auxiliar","Otros Profesionales","Otros Técnicos"];
 const PCOLMAP={
-  categoria:["categoria","categoria cmf","cargo cmf","tipo cargo","categoria funcion","categoria de funciones","categoria funciones","categoria funciones cmf","categoria del cargo"],
+  categoria:["cat func","cat funcion","categoria","categoria cmf","categoria funcion","categoria funciones","categoria funciones cmf","categoria de funciones","categoria del cargo","categoria funcional","tipo cargo","cargo cmf"],
   sexo:["sexo","genero","sex"],
-  nacionalidad:["nacionalidad","pais","pais nacionalidad"],
-  fnac:["fecha nacimiento","fecha nac","nacimiento","fecha de nacimiento","f nacimiento"],
-  edad:["edad","rango edad","rango de edad","tramo edad","tramo de edad"],
-  fing:["fecha ingreso","fecha contrato","ingreso empresa","fecha de ingreso","f ingreso","fecha de contrato"],
-  antig:["antiguedad","antiguedad anos","anos de servicio","anos servicio","antiguedad en anos"],
-  contrato:["tipo contrato","modalidad contrato","contrato","tipo de contrato"],
-  modalidad:["modalidad trabajo","jornada","teletrabajo","modalidad de trabajo","modalidad jornada","tipo de jornada"],
-  discapacidad:["discapacidad","situacion discapacidad","persona con discapacidad","situacion de discapacidad","en situacion de discapacidad"]
+  nacionalidad:["nacionalidad","pais nacionalidad"],
+  fnac:["fecha nacimiento","fecha de nacimiento","fecha nac","f nacimiento"],
+  edad:["edad"],
+  rangoEdad:["rango edad","rango de edad","tramo edad","tramo de edad"],
+  fing:["fecha ingreso","fecha de ingreso","fecha contrato","fecha de contrato","f ingreso","ingreso empresa"],
+  antig:["antiguedad","antiguedad anos","antiguedad en anos","anos de servicio","anos servicio"],
+  rangoAntig:["antiguedad laboral","rango antiguedad","rango de antiguedad","tramo antiguedad"],
+  contrato:["tipo contrato","tipo de contrato","modalidad contrato"],
+  modalidad:["modalidad trabajo","modalidad de trabajo","jornada","tipo de jornada","modalidad jornada"],
+  discapacidad:["discapacidad","situacion discapacidad","persona con discapacidad","situacion de discapacidad","en situacion de discapacidad"],
+  estado:["estado","estado laboral","situacion","vigencia"]
 };
-/* match a header to an internal field key */
-function pMatchHeader(h){ const c=norm(h); if(!c)return null; let best=null,score=0;
+/* Puntaje de parecido entre un encabezado del Excel y una de las columnas que
+   necesitamos. 100 = idéntico. Devuelve {key,score}. */
+function pScoreHeader(h){ const c=norm(h); if(!c) return null; let best=null,score=0;
   for(const key in PCOLMAP){ for(const variant of PCOLMAP[key]){ const v=norm(variant); let s=0;
     if(v===c)s=100; else if(c.includes(v)||v.includes(c))s=60; else { const cw=c.split(" "),vw=v.split(" "); s=cw.filter(w=>w.length>2&&vw.includes(w)).length*20; }
     if(s>score){score=s;best=key;} } }
-  return score>=40?best:null; }
+  return score>=40?{key:best,score:score}:null; }
+function pMatchHeader(h){ const r=pScoreHeader(h); return r?r.key:null; }
+/* Asignación GLOBAL: para cada columna que necesitamos se queda el encabezado que
+   mejor calza, no el primero que aparezca. Sin esto «Cargo» le ganaba a «Cat Func». */
+function pMapHeaders(headers){
+  const cand=[];
+  headers.forEach(function(h,i){ const r=pScoreHeader(h); if(r) cand.push({i:i,key:r.key,score:r.score,h:String(h)}); });
+  cand.sort(function(a,b){ return b.score-a.score || a.i-b.i; });
+  const map={}, used={}, names={};
+  cand.forEach(function(c){ if(map[c.key]!=null||used[c.i])return; map[c.key]=c.i; used[c.i]=1; names[c.key]=c.h; });
+  const unmapped=[]; headers.forEach(function(h,i){ if(!used[i]&&String(h).trim())unmapped.push(String(h)); });
+  return {map:map,names:names,unmapped:unmapped};
+}
+/* Los Excel reales casi nunca traen los encabezados en la primera fila (títulos,
+   logos, filas en blanco). Se prueban las primeras filas y se queda la mejor. */
+function pFindHeaderRow(rowsArr){
+  let best={row:0,info:pMapHeaders((rowsArr[0]||[]).map(function(x){return String(x);})),n:-1};
+  best.n=Object.keys(best.info.map).length;
+  const lim=Math.min(rowsArr.length,10);
+  for(let r=0;r<lim;r++){ const info=pMapHeaders((rowsArr[r]||[]).map(function(x){return String(x);}));
+    const n=Object.keys(info.map).length;
+    if(n>best.n){ best={row:r,info:info,n:n}; } }
+  return best;
+}
 function sexHM(v){ const s=norm(v); if(!s)return null;
-  if(s.includes("fem")||s.includes("muj")||s==="f"||s==="m")return "m";
-  if(s.includes("masc")||s.includes("homb")||s==="h"||s==="varon"||s==="v")return "h"; return null; }
+  /* Convención de los archivos de RR.HH. en Chile: F = Femenino, M = Masculino. */
+  if(s==="f"||s.indexOf("fem")===0||s.indexOf("muj")>=0) return "m";
+  if(s==="m"||s==="h"||s==="v"||s.indexOf("masc")===0||s.indexOf("homb")>=0||s.indexOf("varon")>=0) return "h";
+  return null; }
 function catIndex(v){ const c=norm(v); if(!c)return 7;
   for(let i=0;i<CATS5.length;i++) if(norm(CATS5[i])===c) return i;
   if(c.includes("alta"))return 0;
@@ -1682,50 +2032,115 @@ function catIndex(v){ const c=norm(v); if(!c)return 7;
 function excelDate(v){ if(v instanceof Date)return v; if(typeof v==="number"){ const d=new Date(Math.round((v-25569)*86400*1000)); return isNaN(+d)?null:d; }
   const m=String(v).match(/(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})/); if(m){ let y=+m[3]; if(y<100)y+=2000; return new Date(y,(+m[2])-1,+m[1]); }
   const t=Date.parse(v); return isNaN(t)?null:new Date(t); }
-function ageOf(p){ if(p.edad!==undefined&&p.edad!==""){ const n=parseFloat(String(p.edad).replace(/[^0-9.]/g,"")); if(!isNaN(n)&&n>0&&n<120)return n; }
+/* «15 años y 0 meses» → 15 · «7,5» → 7.5 · «Mas de 12» → null (eso lo ve bucketFromText) */
+function parseAnos(v){ const s=norm(v); if(!s)return null;
+  let m=s.match(/(\d+(?:[.,]\d+)?)\s*ano/); if(m) return parseFloat(m[1].replace(",","."));
+  m=s.match(/^(\d+(?:[.,]\d+)?)$/); if(m) return parseFloat(m[1].replace(",","."));
+  return null; }
+/* Traduce un rango escrito («Menor de 30», «Entre 41 Y 50», «Mas de 12») al tramo
+   que corresponde, usando la función de tramos que se le pase. */
+function bucketFromText(v,fn){ const s=norm(v); if(!s)return -1;
+  const nums=(s.match(/\d+/g)||[]).map(Number); if(!nums.length)return -1;
+  if(nums.length>=2) return fn((nums[0]+nums[nums.length-1])/2);
+  if(/menor|menos|hasta|bajo|inferior/.test(s)) return fn(nums[0]-1);
+  if(/mayor|mas|sobre|superior|desde/.test(s))  return fn(nums[0]+1);
+  return fn(nums[0]); }
+function ageOf(p){ const n=parseAnos(p.edad); if(n!=null&&n>0&&n<120)return n;
   if(p.fnac){ const d=excelDate(p.fnac); if(d)return YEAR-d.getFullYear(); } return null; }
 function ageBucket(a){ if(a==null)return -1; if(a<30)return 0; if(a<=40)return 1; if(a<=50)return 2; if(a<=60)return 3; if(a<=70)return 4; return 5; }
-function senYears(p){ if(p.antig!==undefined&&p.antig!==""){ const n=parseFloat(String(p.antig).replace(/[^0-9.]/g,"")); if(!isNaN(n))return n; }
+function ageBucketOf(p){
+  if(p.rangoEdad!=null&&String(p.rangoEdad).trim()!==""){ const b=bucketFromText(p.rangoEdad,ageBucket); if(b>=0)return b; }
+  const a=ageOf(p); return a!=null?ageBucket(a):-1; }
+function senYears(p){ const n=parseAnos(p.antig); if(n!=null)return n;
   if(p.fing){ const d=excelDate(p.fing); if(d)return YEAR-d.getFullYear(); } return null; }
 function senBucket(y){ if(y==null)return -1; if(y<3)return 0; if(y<=6)return 1; if(y<=9)return 2; if(y<=12)return 3; return 4; }
+function senBucketOf(p){
+  if(p.rangoAntig!=null&&String(p.rangoAntig).trim()!==""){ const b=bucketFromText(p.rangoAntig,senBucket); if(b>=0)return b; }
+  const y=senYears(p); if(y!=null)return senBucket(y);
+  if(p.antig!=null&&String(p.antig).trim()!=="") return bucketFromText(p.antig,senBucket);
+  return -1; }
 function contractIndex(v){ const c=norm(v); if(!c)return -1; if(c.includes("indefinido"))return 0; if(c.includes("fijo")||c.includes("plazo"))return 1; if(c.includes("obra")||c.includes("faena"))return 2; if(c.includes("honorar")||c.includes("servicio"))return 3; return -1; }
-function modalityIndex(v){ const c=norm(v); if(!c)return -1; if(c.includes("tele")&&c.includes("compl"))return 3; if(c.includes("tele"))return 2; if(c.includes("parcial"))return 1; if(c.includes("pacto")||c.includes("adaptab")||c.includes("familiar"))return 4; if(c.includes("ordinaria")||c.includes("jornada")||c.includes("completa"))return 0; return -1; }
+/* Filas del cuadro 5.3: 0 ordinaria · 1 parcial · 2 teletrabajo parcial · 3 teletrabajo completo · 4 pacto */
+function modalityIndex(v){ const c=norm(v); if(!c)return -1;
+  if(c.includes("hibrid"))return 2;
+  if(c.includes("tele"))return c.includes("parcial")?2:3;
+  if(c.includes("presencial"))return 0;
+  if(c.includes("parcial"))return 1;
+  if(c.includes("pacto")||c.includes("adaptab")||c.includes("familiar"))return 4;
+  if(c.includes("ordinaria")||c.includes("jornada")||c.includes("completa"))return 0;
+  return -1; }
 function isDisab(v){ const s=norm(v); if(!s||s==="no"||s==="n"||s.includes("sin disc"))return false; return s==="si"||s==="s"||s.startsWith("si")||s==="1"||s==="true"||s.includes("con disc")||s.includes("situacion de disc")||s.includes("discapac"); }
+function isBaja(v){ const s=norm(v); if(!s)return false; return /inactiv|baja|egres|desvincul|finiquit|retirad|cesad|salida/.test(s); }
+function natName(v){ const s=String(v==null?"":v).trim().replace(/\s+/g," "); if(!s)return "No informada";
+  return s.charAt(0).toUpperCase()+s.slice(1).toLowerCase(); }
+/* Qué tan buena pinta tiene una pestaña para ser la nómina vigente */
+function sheetScore(name,nkeys,nrows){
+  let s=nkeys*10+Math.min(nrows,500)/100; const n=norm(name);
+  if(/dotacion|nomina|personal|planta|activos|colaborador|dotacion vigente/.test(n)) s+=25;
+  if(/salida|egreso|baja|renuncia|desvincul|finiquito|rotacion|historic/.test(n))    s-=40;
+  if(/tabla|resumen|pivot|grafico|dinamica|indicador/.test(n))                       s-=20;
+  return s; }
 
-/* classify sheets and gather persons */
+/* Elige UNA pestaña (la mejor) y cuenta las personas.
+   Antes recorría todas y sumaba, así que un archivo con «Dotación» y «salidas»
+   contaba dos veces a la gente y mezclaba a quienes ya no están en la empresa. */
 function personasCompute(wb){
-  const persons=[]; const unmapped=new Set(); let rawSheets=0;
-  wb.sheetNames.forEach(name=>{
+  let pick=null;
+  const cands=[];
+  wb.sheetNames.forEach(function(name){
     const sh=wb.sheets[name]; if(!sh||!sh.rowsArr.length)return;
-    const headers=sh.headers; const map={}; headers.forEach((h,i)=>{ const k=pMatchHeader(h); if(k&&map[k]==null)map[k]=i; else if(String(h).trim())unmapped.add(String(h)); });
-    const isRaw = map.categoria!=null && map.sexo!=null && sh.rowsArr.length>2;
-    if(!isRaw)return; rawSheets++;
-    for(let r=1;r<sh.rowsArr.length;r++){ const row=sh.rowsArr[r]; if(!row||!row.length)continue;
-      const get=k=>map[k]!=null?row[map[k]]:undefined;
-      const cat=get("categoria"); const sx=get("sexo"); if((cat==null||cat==="")&&(sx==null||sx===""))continue;
-      persons.push({cat:cat,sexo:sx,nacionalidad:get("nacionalidad"),fnac:get("fnac"),edad:get("edad"),fing:get("fing"),antig:get("antig"),contrato:get("contrato"),modalidad:get("modalidad"),disc:get("discapacidad")}); }
+    const hr=pFindHeaderRow(sh.rowsArr);
+    const map=hr.info.map;
+    const nrows=sh.rowsArr.length-hr.row-1;
+    if(map.sexo==null||map.categoria==null||nrows<2) return;
+    const sc=sheetScore(name,Object.keys(map).length,nrows);
+    cands.push({name:name,sh:sh,hr:hr,score:sc,nrows:nrows});
   });
-  // aggregate
+  cands.sort(function(a,b){ return b.score-a.score; });
+  pick=cands[0]||null;
+
+  const persons=[];
+  let unmapped=[], names={}, sheetUsed=null, headerRow=0, descartadas=0;
+  if(pick){
+    sheetUsed=pick.name; headerRow=pick.hr.row; names=pick.hr.info.names; unmapped=pick.hr.info.unmapped;
+    const map=pick.hr.info.map, rows=pick.sh.rowsArr;
+    for(let r=headerRow+1;r<rows.length;r++){ const row=rows[r]; if(!row||!row.length)continue;
+      const get=function(k){ return map[k]!=null?row[map[k]]:undefined; };
+      const cat=get("categoria"), sx=get("sexo");
+      if((cat==null||cat==="")&&(sx==null||sx===""))continue;
+      if(map.estado!=null&&isBaja(get("estado"))){ descartadas++; continue; }
+      persons.push({cat:cat,sexo:sx,nacionalidad:get("nacionalidad"),fnac:get("fnac"),edad:get("edad"),
+        rangoEdad:get("rangoEdad"),fing:get("fing"),antig:get("antig"),rangoAntig:get("rangoAntig"),
+        contrato:get("contrato"),modalidad:get("modalidad"),disc:get("discapacidad")});
+    }
+  }
+  // agregación
   const t511=CATS5.map(()=>({h:0,m:0}));
   const t515=CATS5.map(()=>({h:0,m:0}));
   const t513=CATS5.map(()=>Array.from({length:6},()=>({h:0,m:0})));
   const t514=CATS5.map(()=>Array.from({length:5},()=>({h:0,m:0})));
-  const natMap={}; const natOrder=[]; const t512={}; // catIdx -> nat -> {h,m}
+  const natMap={}; const natOrder=[]; const t512={};
   const t52=[0,1,2,3].map(()=>({h:0,m:0})); const t53=[0,1,2,3,4].map(()=>({h:0,m:0}));
-  persons.forEach(p=>{ const sx=sexHM(p.sexo); if(!sx)return; const ci=catIndex(p.cat);
+  let sinSexo=0, sinEdad=0, sinAntig=0, sinContrato=0, sinModalidad=0;
+  persons.forEach(function(p){ const sx=sexHM(p.sexo); if(!sx){sinSexo++;return;} const ci=catIndex(p.cat);
     t511[ci][sx]++;
     if(isDisab(p.disc)) t515[ci][sx]++;
-    const ab=ageBucket(ageOf(p)); if(ab>=0)t513[ci][ab][sx]++;
-    const sb=senBucket(senYears(p)); if(sb>=0)t514[ci][sb][sx]++;
-    const nat=(p.nacionalidad!=null&&String(p.nacionalidad).trim())?String(p.nacionalidad).trim():"No informada";
+    const ab=ageBucketOf(p); if(ab>=0)t513[ci][ab][sx]++; else sinEdad++;
+    const sb=senBucketOf(p); if(sb>=0)t514[ci][sb][sx]++; else sinAntig++;
+    const nat=natName(p.nacionalidad);
     if(!natMap[nat]){natMap[nat]="nat"+natOrder.length;natOrder.push(nat);} const ng=natMap[nat];
     t512[ci]=t512[ci]||{}; t512[ci][ng]=t512[ci][ng]||{h:0,m:0}; t512[ci][ng][sx]++;
-    const cti=contractIndex(p.contrato); if(cti>=0)t52[cti][sx]++;
-    const mi=modalityIndex(p.modalidad); if(mi>=0)t53[mi][sx]++;
+    const cti=contractIndex(p.contrato); if(cti>=0)t52[cti][sx]++; else sinContrato++;
+    const mi=modalityIndex(p.modalidad); if(mi>=0)t53[mi][sx]++; else sinModalidad++;
   });
-  return {persons:persons.length,rawSheets,unmapped:[...unmapped],
+  const totH=t511.reduce(function(a,r){return a+r.h;},0), totM=t511.reduce(function(a,r){return a+r.m;},0);
+  return {persons:persons.length,rawSheets:cands.length,sheetUsed:sheetUsed,headerRow:headerRow,
+    colNames:names,unmapped:unmapped,descartadas:descartadas,
+    avisos:{sinSexo:sinSexo,sinEdad:sinEdad,sinAntig:sinAntig,sinContrato:sinContrato,sinModalidad:sinModalidad},
+    totH:totH,totM:totM,
     t511,t515,t513,t514,t512,natOrder,natMap,t52,t53};
 }
+
 function personasApply(res){
   if(!res.persons)return [];
   const filled=[];
@@ -1753,7 +2168,21 @@ function personasApply(res){
 /* ===== UI panel (top of section 5) ===== */
 function personasPanel(){
   return `<div class="fcard personas-up"><h3>📥 Carga automática desde Excel de Demografía</h3>
-  <div class="desc">Sube el archivo Excel de demografía del personal (datos CMF). El sistema procesará automáticamente las pestañas y completará todas las tablas de la sección 5. Formatos aceptados: .xlsx, .xls. Tamaño máximo: 5 MB.</div>
+  <div class="desc">Sube el Excel de dotación del personal y se completan solas las tablas 5.1.1 a 5.3. Formatos: .xlsx o .xls, máximo 5 MB. El archivo no se guarda en ninguna parte.</div>
+  ${acc("personas-formato","📋 Qué formato debe tener el archivo",`
+   <div class="desc" style="margin-bottom:8px">Una <b>fila por persona</b>, con los encabezados en cualquiera de las primeras 10 filas (se detectan solos). Si hay varias pestañas, se usa la que parezca la nómina vigente (se descartan las de salidas/egresos y las de resúmenes).</div>
+   <table class="dt"><thead><tr><th style="text-align:left">Columna</th><th style="text-align:left">Nombres que se reconocen</th><th style="text-align:left">Para qué sirve</th></tr></thead><tbody>
+   <tr><td><b>Categoría de funciones</b> <span style="color:var(--burgundy)">(obligatoria)</span></td><td>Cat Func · Categoría · Categoría de funciones</td><td>Filas de todos los cuadros. Valores: Alta Dirección/Gerencia, Gerencia, Jefatura, Operario, Fuerza de Ventas, Administrativo, Auxiliar, Otros Profesionales, Otros Técnicos</td></tr>
+   <tr><td><b>Sexo</b> <span style="color:var(--burgundy)">(obligatoria)</span></td><td>Sexo · Género</td><td>Columnas H/M. Se entiende <b>F = Femenino</b> y <b>M = Masculino</b> (también Femenino/Masculino, Mujer/Hombre)</td></tr>
+   <tr><td>Nacionalidad</td><td>Nacionalidad</td><td>Cuadro 5.1.2 (una columna por nacionalidad)</td></tr>
+   <tr><td>Rango de edad <i>o</i> Fecha de nacimiento</td><td>Rango Edad · Edad · Fecha de nacimiento</td><td>Cuadro 5.1.3. Si viene el rango («Menor de 30», «Entre 41 Y 50») se usa ese</td></tr>
+   <tr><td>Antigüedad</td><td>Antigüedad laboral · Antigüedad años · Fecha de ingreso</td><td>Cuadro 5.1.4. Se prefiere el rango ya calculado («Entre 3 Y 6», «Mas de 12»)</td></tr>
+   <tr><td>Tipo de contrato</td><td>Tipo contrato</td><td>Cuadro 5.2. Indefinido · Plazo fijo · Por obra o faena · Honorarios</td></tr>
+   <tr><td>Modalidad de trabajo</td><td>Modalidad trabajo · Jornada</td><td>Cuadro 5.3. Presencial→ordinaria · Híbrido→teletrabajo parcial · Teletrabajo→teletrabajo completo</td></tr>
+   <tr><td>Discapacidad</td><td>Discapacidad · Situación de discapacidad</td><td>Cuadro 5.1.5. Sí/No</td></tr>
+   <tr><td>Estado <i>(opcional)</i></td><td>Estado · Situación</td><td>Si existe, se descartan las filas que digan baja, egreso, desvinculado, etc.</td></tr>
+   </tbody></table>
+   <div class="saved-note" style="margin-top:8px">Las columnas que no estén simplemente dejan su cuadro en cero: siempre puedes completarlo a mano. Después de la carga <b>todas las tablas quedan editables</b>.</div>`)}
   <div class="dropzone" id="dzP" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="personasDrop(event)"><input type="file" id="fileP" style="display:none" accept=".xlsx,.xls" onchange="personasPick(this)"/><button class="btn primary" onclick="document.getElementById('fileP').click()">Procesar y autocompletar</button><span class="dz-hint">o arrastra el archivo aquí · .xlsx, .xls · máx 5 MB · no se almacena</span></div>
   <div id="personasProg" class="personas-prog" style="display:none"><div class="bar"><i id="personasBar" style="width:0%"></i></div><div class="saved-note" id="personasMsg">Procesando…</div></div>
   <div id="personasRes" class="autoc-res"></div></div>`;
@@ -1780,11 +2209,25 @@ function personasProcessFile(file){
   }).catch(e=>{ personasHideProg(); vntAlert("No se pudo leer el archivo: "+e); });
 }
 function personasHideProg(){ const p=document.getElementById("personasProg"); if(p)p.style.display="none"; }
+const PCOLLBL={categoria:"Categoría de funciones",sexo:"Sexo",nacionalidad:"Nacionalidad",fnac:"Fecha de nacimiento",edad:"Edad",rangoEdad:"Rango de edad",fing:"Fecha de ingreso",antig:"Antigüedad",rangoAntig:"Rango de antigüedad",contrato:"Tipo de contrato",modalidad:"Modalidad de trabajo",discapacidad:"Discapacidad",estado:"Estado"};
 function personasResult(res){
   const el=document.getElementById("personasRes"); if(!el)return;
-  if(!res.persons){ el.innerHTML=`<div class="gnote">No se detectaron pestañas con datos crudos (categoría + sexo por persona). Revisa que el archivo tenga al menos las columnas de categoría de funciones y sexo, o ingresa los datos manualmente.</div>`; return; }
-  let h=`<div class="gnote ok-note">✓ ${res.persons} persona(s) procesada(s) desde ${res.rawSheets} pestaña(s) de datos crudos. Tablas completadas: <b>${(res.filled||[]).join(", ")}</b>.</div>`;
-  if(res.unmapped&&res.unmapped.length) h+=`<div class="gnote" style="margin-top:6px">Columnas no reconocidas (no afectan el cálculo): ${res.unmapped.map(esc).join(", ")}.</div>`;
+  if(!res.persons){ el.innerHTML=`<div class="gnote">No se encontró ninguna pestaña con una persona por fila. El archivo necesita, como mínimo, una columna de <b>categoría de funciones</b> y una de <b>sexo</b>. Revisa el formato esperado en el recuadro de ayuda de arriba, o completa las tablas a mano.</div>`; return; }
+  const av=res.avisos||{};
+  let h=`<div class="gnote ok-note">✓ <b>${res.totH+res.totM}</b> persona(s) contabilizadas (<b>${res.totH}</b> hombres / <b>${res.totM}</b> mujeres) desde la pestaña <b>«${esc(res.sheetUsed)}»</b>${res.headerRow?" (encabezados en la fila "+(res.headerRow+1)+")":""}. Tablas completadas: <b>${(res.filled||[]).join(", ")}</b>.</div>`;
+  h+=`<div class="gnote" style="margin-top:6px"><b>Columnas que se usaron:</b> `+Object.keys(res.colNames||{}).map(function(k){ return (PCOLLBL[k]||k)+" ← «"+esc(res.colNames[k])+"»"; }).join(" · ")+`</div>`;
+  const faltan=Object.keys(PCOLLBL).filter(function(k){ return k!=="estado"&&!(res.colNames||{})[k]; });
+  if(faltan.length) h+=`<div class="gnote" style="margin-top:6px">Sin columna en el archivo: ${faltan.map(function(k){return PCOLLBL[k];}).join(", ")}. Esas tablas quedan en cero y hay que completarlas a mano.</div>`;
+  const notas=[];
+  if(res.rawSheets>1) notas.push("El archivo tenía "+res.rawSheets+" pestañas con datos por persona; se usó la que mejor calza con una nómina vigente.");
+  if(res.descartadas) notas.push(res.descartadas+" fila(s) descartada(s) por estar marcadas como baja/inactivas.");
+  if(av.sinSexo) notas.push(av.sinSexo+" fila(s) sin sexo reconocible (no se contaron en ninguna tabla).");
+  if(av.sinEdad) notas.push(av.sinEdad+" persona(s) sin edad ni rango de edad (fuera del cuadro 5.1.3).");
+  if(av.sinAntig) notas.push(av.sinAntig+" persona(s) sin antigüedad (fuera del cuadro 5.1.4).");
+  if(av.sinContrato) notas.push(av.sinContrato+" persona(s) con tipo de contrato no reconocido (fuera del 5.2).");
+  if(av.sinModalidad) notas.push(av.sinModalidad+" persona(s) con modalidad no reconocida (fuera del 5.3).");
+  if(notas.length) h+=`<div class="gnote" style="margin-top:6px;border-left-color:#d4a017;background:#fdf7e8;color:#7a5a10"><b>Revisa esto:</b><ul style="margin:6px 0 0;padding-left:18px">${notas.map(function(x){return "<li>"+esc(x)+"</li>";}).join("")}</ul></div>`;
+  if(res.unmapped&&res.unmapped.length) h+=`<div class="gnote" style="margin-top:6px">Columnas ignoradas (no afectan el cálculo): ${res.unmapped.slice(0,25).map(esc).join(", ")}${res.unmapped.length>25?" …":""}.</div>`;
   h+=`<div class="gnote" style="margin-top:6px;border-left-color:#3b6ea5;background:#eef4fb;color:#2b5580">Los datos quedaron como punto de partida y son <b>editables</b>. Puedes ajustarlos manualmente en cada tabla.</div>`;
   h+=`<div class="row-actions" style="margin-top:8px"><button class="btn primary" onclick="goToNode('5.1');window.scrollTo(0,0)">Revisar datos cargados</button></div>`;
   el.innerHTML=h;
@@ -1793,12 +2236,18 @@ function infoIco(t){return `<span class="info" onclick="event.stopPropagation()"
 function dif519Badge(d){ return (DIF519.indexOf(sk(d))>=0)?`<span class="badge dif" title="NCG 519, Sección III — entra en vigor el 31/12/2026">🕐 Vigencia diferida — obligatorio para memorias del año 2026 en adelante (NCG 519, Sección III). Aplicación voluntaria anticipada permitida.</span>`:""; }
 function dif519NoteBox(d){ const n=(typeof DIF519NOTE!=="undefined")&&DIF519NOTE[sk(d)]; return n?`<div class="gnote" style="border-left-color:#3b6ea5;background:#eef4fb;color:#2b5580;margin-top:8px">🕐 ${esc(n)}</div>`:""; }
 function lawIcons(text){ let out=""; const seen={}; for(const num in LAWS){ if(seen[num]||!text||text.indexOf(num)<0)continue; seen[num]=1; const l=LAWS[num]; out+=`<span class="info lawi" onclick="event.stopPropagation()">§<span class="tip"><b>${esc(l.name)}</b><br>${esc(l.desc)}<br><a href="${esc(l.url)}" target="_blank">Ver norma oficial ↗</a></span></span>`; } return out; }
-function gStatus(d){ if(reqNA(d))return"na"; const s=statusOf(d.id); if(s==="rev")return"rev"; if(s==="fix")return"fix"; if(s==="sent")return"sent"; if(reqComplete(d))return"comp"; if(s==="draft")return"draft"; return"pend"; }
+/* La etiqueta de estado del requerimiento sale SOLO del estado guardado en `answers`.
+   Nunca se deduce de cuántos campos están llenos: eso es «completitud» y se muestra
+   aparte, en la barra de avance. Un requerimiento solo dice «Completado» cuando el
+   revisor lo aprobó. */
+function gStatus(d){ if(reqNA(d)) return "na"; return statusOf(d.id); }
 function setReqStatus(id,status){const _d=BYID[id]; if(_d?!canEditReq(_d):!canEditAns(id))return;
-  ANS[id]=Object.assign({text:""},ANS[id],{status:status,updated:nowStr()});save(LS.answers,ANS);sbUpsertAnswer(id);if(typeof logActivity==="function")logActivity("save",BYID[id]);renderSide();renderCurrentKeepOpen();}
+  if(status==="sent"&&role==="revisor")return;   /* el revisor revisa, no se envía a sí mismo */
+  clearRevUnlock(id);
+  ANS[id]=Object.assign({text:""},ANS[id],{status:status,updated:nowStr()});save(LS.answers,ANS);sbUpsertAnswer(id);if(typeof logActivity==="function")logActivity("save",BYID[id]);syncSectionStatus();renderSide();renderCurrentKeepOpen();}
 function guidedCard(d){
   const s=schemaOf(d), st=gStatus(d);
-  return `<div class="req" data-id="${d.id}"><div class="head" onclick="toggleReq('${d.id}')"><div class="code">${esc(CODE_LABEL[d.sub+"||"+d.item]||d.item||d.sub)}</div><div class="htext"><div class="qtitle">${esc(s.title)} ${lawIcons(d.req)}</div><div class="meta">${dif519Badge(d)}${areaBadge(areaOf(d))}${respOf(d)?`<span class="chip">${esc(respOf(d))}</span>`:""}<span class="chip ${ST_CLS[st]}">${ST_LBL[st]}</span>${prevBtn(d)}</div></div><label class="na-req" onclick="event.stopPropagation()"><input type="checkbox" ${reqNA(d)?'checked':''} ${role==="revisor"?'':'disabled'} onchange="setReqNA(BYID['${d.id}'],this.checked)"/> N/A</label><div class="toggle-ico">›</div></div><div class="body">${guidedBody(d)}</div></div>`;
+  return `<div class="req" data-id="${d.id}"><div class="head" onclick="toggleReq('${d.id}')"><div class="code">${esc(CODE_LABEL[d.sub+"||"+d.item]||d.item||d.sub)}</div><div class="htext"><div class="qtitle">${esc(s.title)} ${lawIcons(d.req)}</div><div class="meta">${dif519Badge(d)}${areaBadge(areaOf(d))}${respOf(d)?`<span class="chip">${esc(respOf(d))}</span>`:""}<span class="chip ${ST_CLS[st]}">${ST_LBL[st]}</span></div></div><label class="na-req" onclick="event.stopPropagation()"><input type="checkbox" ${reqNA(d)?'checked':''} ${role==="revisor"?'':'disabled'} onchange="setReqNA(BYID['${d.id}'],this.checked)"/> N/A</label><div class="toggle-ico">›</div></div><div class="body">${guidedBody(d)}</div></div>`;
 }
 function renderField(f,dis){
   if(!condOk(f.showIf)) return "";
@@ -1848,57 +2297,93 @@ function guidedBody(d){
   else if(gs==="na") inner=`<div class="gnote na">No aplica según tu respuesta a: <b>${esc((s.gate&&s.gate.label)||'la pregunta previa')}</b>.</div>`;
   else if(gs==="wait") inner=`<div class="gnote wait">Primero responde: <b>${esc((s.gate&&s.gate.label)||'la pregunta previa relacionada')}</b>.</div>`;
   else { inner=(s.help?`<div class="gnote">${esc(s.help)}</div>`:"")+`<div class="gfields">`+s.fields.map(f=>renderField(f,dis)).join("")+`</div>`; }
-  const acts=canEditReq(d)?`<div class="row-actions"><button class="btn ghost" onclick="setReqStatus('${d.id}','draft')">Guardar borrador</button><button class="btn primary" onclick="setReqStatus('${d.id}','sent')">Enviar a revisión</button><span class="saved-note">${ANS[d.id]&&ANS[d.id].updated?('Actualizado: '+esc(ANS[d.id].updated)):''}</span></div>`:lockNoteHtml(d);
+  const acts=canEditReq(d)?`<div class="row-actions">${prevBtn(d)}<button class="btn ghost" onclick="setReqStatus('${d.id}','draft')">Guardar borrador</button>${role==="revisor"?"":`<button class="btn primary" onclick="setReqStatus('${d.id}','sent')">Enviar a revisión</button>`}${limpiarBtn(d)}<span class="saved-note">${ANS[d.id]&&ANS[d.id].updated?('Actualizado: '+esc(ANS[d.id].updated)):''}</span></div>`:lockNoteHtml(d)+limpiarRow(d);
   const leftMain=`${dif519NoteBox(d)}${normaAcc}${odsSasbBlock(d)}<div class="block-h">Completa la información</div>${inner}${acts}${prevPanel(d)}<div class="block-h" style="margin-top:18px">Comentarios del revisor</div>${commentsHtml(d.id)}${role==="revisor"?revisorControls(d.id):""}`;
   const panels=`<div class="panel"><h4>📌 Asignación</h4>${assignPanelInner(d)}</div>${repoPanel(d)}`;
   return `<div class="grid2"><div>${leftMain}</div><div>${panels}</div></div>`;
 }
 function commentsHtml(id){const coms=COM[id]||[];return coms.length?coms.map(c=>`<div class="comment ${c.kind||''}"><div class="ch"><b>${esc(c.author)}</b><span>${esc(c.ts)}</span></div><div class="cx">${esc(c.text)}</div></div>`).join(""):`<div class="no-comments">Aún no hay comentarios del revisor.</div>`;}
 function revisorControls(id){
-  const ta=`<textarea class="white" id="cm-${id}" style="min-height:64px" placeholder="Escribe un comentario..."></textarea>`;
-  /* Aprobado: el único camino de vuelta es «Editar», que reabre el requerimiento */
-  if(statusOf(id)==="rev"||statusOf(id)==="comp") return ta+`<div class="row-actions"><button class="btn ghost" onclick="addComment('${id}','')">Comentar</button><button class="btn primary" onclick="reabreReq('${id}')">✎ Editar</button><span class="saved-note">Aprobado. «Editar» lo reabre para cambios.</span></div>`;
-  return ta+`<div class="row-actions"><button class="btn ghost" onclick="addComment('${id}','')">Comentar</button><button class="btn ok" onclick="addComment('${id}','rev')">Aprobar</button><button class="btn fix" onclick="addComment('${id}','fix')">Requiere ajustes</button></div>`;}
+  const st=statusOf(id);
+  /* Completado: bloqueo total. Ni siquiera se puede comentar. El mismo botón que
+     antes decía «Aprobado» ahora dice «Editar» y es el único camino de vuelta. */
+  if(st==="rev"||st==="comp") return `<div class="row-actions"><button class="btn primary" onclick="reabreReq('${id}')">✎ Editar</button><span class="saved-note">Completado: respuestas y comentarios están bloqueados. «Editar» reabre el requerimiento.</span></div>`;
+  const ta=`<textarea class="white" id="cm-${id}" style="min-height:64px" placeholder="Escribe un comentario (no cambia el estado)..."></textarea>`;
+  let acts=`<button class="btn ghost" onclick="addComment('${id}','')">Comentar</button><button class="btn ok" onclick="addComment('${id}','rev')">✓ Aprobado</button>`;
+  if(st!=="fix") acts+=`<button class="btn fix" onclick="addComment('${id}','fix')">Requiere ajustes</button>`;
+  /* Turno del responsable: el revisor puede desbloquearse sin perder la etiqueta */
+  if(st==="fix"&&!REVUNLOCK[id]) acts+=`<button class="btn ghost" onclick="revUnlock('${id}')">✎ Editar de todos modos</button>`;
+  return ta+`<div class="row-actions">${acts}</div>`;}
+/* Muestra lo archivado del año anterior: narrativa + campos + tablas.
+   La fuente es prior_year_data (lo que dejó «Limpiar») con respaldo en
+   prev_answers.json (respuestas 2025 rescatadas de los Excel de las áreas). */
+function prevFieldLabels(d){ const s=schemaOf(d), m={};
+  if(s&&Array.isArray(s.fields)) s.fields.forEach(function(f){ if(f&&f.id) m[f.id]=f.label||f.id; });
+  return m; }
+function prevTableHtml(rows){
+  if(!Array.isArray(rows)||!rows.length) return '<div class="placeholder">[Tabla vacía]</div>';
+  const cols=[]; rows.forEach(function(r){ Object.keys(r||{}).forEach(function(k){ if(k.charAt(0)!=="_"&&cols.indexOf(k)<0) cols.push(k); }); });
+  if(!cols.length) return '<div class="placeholder">[Tabla vacía]</div>';
+  let h='<table class="dt"><thead><tr>'+cols.map(function(c){return '<th>'+esc(c)+'</th>';}).join("")+'</tr></thead><tbody>';
+  rows.forEach(function(r){ h+='<tr>'+cols.map(function(c){return '<td>'+esc(r&&r[c]!=null?r[c]:"")+'</td>';}).join("")+'</tr>'; });
+  return h+'</tbody></table>';
+}
 function prevPanel(d){
-  const pa=PREVANS[sk(d)]; let prev="";
-  if(pa){ prev+=`<div class="ph">Respuesta ${pa.year||PREV} del área${pa.area?' ('+esc(pa.area)+')':''}</div><div style="white-space:pre-wrap">${esc(pa.ans)}</div>`; }
-  else { prev+=`<div class="placeholder">[Sin respuesta del año anterior registrada para este requerimiento]</div>`; }
-  return acc("prev-"+d.id,"🗓 Año anterior ("+PREV+")",`<div class="py">${prev}</div>`,"prev");
+  const src=prevValuesFor(d), yr=prevYearOf(d), pa=PREVANS[sk(d)];
+  const labels=prevFieldLabels(d);
+  let prev="";
+  if(src.ans!=null&&String(src.ans).trim()!==""){
+    prev+=`<div class="ph">Respuesta ${yr}${pa&&pa.area?' · '+esc(pa.area):''}</div><div style="white-space:pre-wrap">${esc(src.ans)}</div>`;
+  }
+  const fids=Object.keys(src.fields||{});
+  if(fids.length){
+    prev+=`<div class="ph" style="margin-top:10px">Datos ${yr}</div><ul style="margin:0;padding-left:16px;font-size:12.5px;line-height:1.7">`;
+    fids.forEach(function(i){ const v=src.fields[i]||{};
+      const val=v.na?"<i>No aplica</i>":(v.v==null||v.v===""?"<i>—</i>":esc(v.v));
+      prev+=`<li><b>${esc(labels[i]||i)}:</b> ${val}</li>`; });
+    prev+=`</ul>`;
+  }
+  const tids=Object.keys(src.tables||{});
+  tids.forEach(function(t){ prev+=`<div class="ph" style="margin-top:10px">${esc(labels[t]||t)} · ${yr}</div>`+prevTableHtml(src.tables[t]); });
+  if(!prev) prev=`<div class="placeholder">[Sin información del año anterior registrada para este requerimiento]</div>`;
+  return acc("prev-"+d.id,"🗓 Año anterior ("+yr+")",`<div class="py">${prev}</div>`,"prev");
 }
 /* repoPanel moved to frag_upload.js (Box A documentos + Box B autocompletar) */
 function reqCard(d){
   const st=statusOf(d.id);
-  return `<div class="req" data-id="${d.id}"><div class="head" onclick="toggleReq('${d.id}')"><div class="code">${esc(CODE_LABEL[d.sub+"||"+d.item]||d.item||d.sub)}</div><div class="htext"><div class="numlabel">${esc(d.numlabel)}${respOf(d)?' · '+esc(respOf(d)):''}</div><div class="rt">${esc(d.req)} ${lawIcons(d.req)}</div><div class="meta">${dif519Badge(d)}${areaBadge(areaOf(d))}<span class="chip ${ST_CLS[st]}">${ST_LBL[st]}</span>${/si/i.test(d.obligatoriedad||"")?'<span class="chip">Obligatorio</span>':''}${prevBtn(d)}</div></div><div class="toggle-ico">›</div></div><div class="body">${reqBody(d)}</div></div>`;
+  return `<div class="req" data-id="${d.id}"><div class="head" onclick="toggleReq('${d.id}')"><div class="code">${esc(CODE_LABEL[d.sub+"||"+d.item]||d.item||d.sub)}</div><div class="htext"><div class="numlabel">${esc(d.numlabel)}${respOf(d)?' · '+esc(respOf(d)):''}</div><div class="rt">${esc(d.req)} ${lawIcons(d.req)}</div><div class="meta">${dif519Badge(d)}${areaBadge(areaOf(d))}<span class="chip ${ST_CLS[st]}">${ST_LBL[st]}</span>${/si/i.test(d.obligatoriedad||"")?'<span class="chip">Obligatorio</span>':''}</div></div><div class="toggle-ico">›</div></div><div class="body">${reqBody(d)}</div></div>`;
 }
 function reqBody(d){
   const a=ANS[d.id]||{text:"",status:"pend"}; const canEdit=canEditReq(d);
-  return `<div class="grid2"><div>${dif519NoteBox(d)}<div class="block-h">Texto del requerimiento (NCG 30 · 461/519)</div><div class="norm">${esc(d.req)}</div><div class="block-h">Respuesta del área${respOf(d)?' · '+esc(respOf(d)):''}</div><textarea class="white" id="ta-${d.id}" placeholder="Redacta aquí la respuesta..." ${canEdit?'':'disabled'}>${esc(a.text)}</textarea><div class="row-actions">${canEdit?`<button class="btn ghost" onclick="saveAns('${d.id}','draft')">Guardar borrador</button><button class="btn primary" onclick="saveAns('${d.id}','sent')">Enviar a revisión</button>`:`<span class="saved-note">${esc(lockNote(d)||"Solo el área responsable puede editar.")}</span>`}<span class="saved-note">${a.updated?('Última edición: '+esc(a.updated)):''}</span></div>${prevPanel(d)}<div class="block-h">Comentarios del revisor</div>${commentsHtml(d.id)}${role==="revisor"?revisorControls(d.id):""}</div><div><div class="panel"><h4>📌 Asignación</h4>${assignPanelInner(d)}</div>${repoPanel(d)}</div></div>`;
+  return `<div class="grid2"><div>${dif519NoteBox(d)}<div class="block-h">Texto del requerimiento (NCG 30 · 461/519)</div><div class="norm">${esc(d.req)}</div><div class="block-h">Respuesta del área${respOf(d)?' · '+esc(respOf(d)):''}</div><textarea class="white" id="ta-${d.id}" oninput="markDirty('ta-${d.id}')" placeholder="Redacta aquí la respuesta..." ${canEdit?'':'disabled'}>${esc(a.text)}</textarea><div class="row-actions">${canEdit?`${prevBtn(d)}<button class="btn ghost" onclick="saveAns('${d.id}','draft')">Guardar borrador</button>${role==="revisor"?"":`<button class="btn primary" onclick="saveAns('${d.id}','sent')">Enviar a revisión</button>`}${limpiarBtn(d)}`:`<span class="saved-note">${esc(lockNote(d)||"Solo el área responsable puede editar.")}</span>${limpiarBtn(d)}`}<span class="saved-note">${a.updated?('Última edición: '+esc(a.updated)):''}</span></div>${prevPanel(d)}<div class="block-h">Comentarios del revisor</div>${commentsHtml(d.id)}${role==="revisor"?revisorControls(d.id):""}</div><div><div class="panel"><h4>📌 Asignación</h4>${assignPanelInner(d)}</div>${repoPanel(d)}</div></div>`;
 }
 const LEAFNOTE={"1":{note:"Este índice puede organizarse libremente por el revisor. No es necesario que siga el orden de la NCG 30 — puede agrupar secciones de manera diferente según la estructura narrativa del informe. Use el campo de texto para redactar o pegar el índice definitivo.",ph:"Ej. 1. Carta del CEO — p.4 / 2. Perfil Corporativo — p.8 / ..."}};
 function leafNarr(code){
   const id=LEAF_NARR[code]; const canEdit=canEditAns(id); const t=ansText(id); const nt=LEAFNOTE[code];
-  return `<div class="fcard"><h3>${code}. ${esc(SECNAME[code])}</h3>${nt?`<div class="desc" style="font-style:italic">${esc(nt.note)}</div>`:`<div class="desc">Contenido narrativo de la sección.</div>`}<textarea class="white" id="ta-${id}" placeholder="${nt?esc(nt.ph):'Redacta aquí el contenido de esta sección...'}" ${canEdit?'':'disabled'}>${esc(t)}</textarea><div class="row-actions">${canEdit?`<button class="btn ghost" onclick="saveAns('${id}','draft')">Guardar borrador</button><button class="btn primary" onclick="saveAns('${id}','sent')">Enviar a revisión</button>`:''}<span class="saved-note">${ANS[id]&&ANS[id].updated?('Última edición: '+esc(ANS[id].updated)):''}</span></div></div>`;
+  return `<div class="fcard"><h3>${code}. ${esc(SECNAME[code])}</h3>${nt?`<div class="desc" style="font-style:italic">${esc(nt.note)}</div>`:`<div class="desc">Contenido narrativo de la sección.</div>`}<textarea class="white" id="ta-${id}" oninput="markDirty('ta-${id}')" placeholder="${nt?esc(nt.ph):'Redacta aquí el contenido de esta sección...'}" ${canEdit?'':'disabled'}>${esc(t)}</textarea><div class="row-actions">${canEdit?`<button class="btn ghost" onclick="saveAns('${id}','draft')">Guardar borrador</button>${role==="revisor"?"":`<button class="btn primary" onclick="saveAns('${id}','sent')">Enviar a revisión</button>`}`:''}<span class="saved-note">${ANS[id]&&ANS[id].updated?('Última edición: '+esc(ANS[id].updated)):''}</span></div></div>`;
 }
 function toggleReq(id){const el=document.querySelector(`.req[data-id="${id}"]`);if(el)el.classList.toggle("open");}
 function saveAns(id,status){const _d=BYID[id]; if(_d?!canEditReq(_d):!canEditAns(id))return;
-  const ta=document.getElementById("ta-"+id);if(!ta)return;ANS[id]={text:ta.value,status:status,updated:nowStr()};save(LS.answers,ANS);sbUpsertAnswer(id);if(typeof logActivity==="function")logActivity("save",BYID[id]);renderSide();renderCurrentKeepOpen();}
-function addComment(id,kind){const t=document.getElementById("cm-"+id);const txt=t?t.value.trim():"";if(!txt&&!kind)return;
-  COM[id]=COM[id]||[];const label=kind==="rev"?"✓ Aprobado":(kind==="fix"?"✎ Requiere ajustes":"");
+  if(status==="sent"&&role==="revisor")return;   /* el revisor revisa, no se envía a sí mismo */
+  clearRevUnlock(id);
+  const ta=document.getElementById("ta-"+id);if(!ta)return;delete DIRTY["ta-"+id];ANS[id]={text:ta.value,status:status,updated:nowStr()};save(LS.answers,ANS);sbUpsertAnswer(id);if(typeof logActivity==="function")logActivity("save",BYID[id]);syncSectionStatus();renderSide();renderCurrentKeepOpen();}
+function addComment(id,kind){ if(!canComment(id))return;
+  const t=document.getElementById("cm-"+id);const txt=t?t.value.trim():"";if(!txt&&!kind)return;
+  COM[id]=COM[id]||[];const label=kind==="rev"?"✓ Completado":(kind==="fix"?"✎ Requiere ajustes":"");
   COM[id].push({author:"Revisor",ts:nowStr(),text:(label?label+(txt?": "+txt:""):txt),kind:kind});save(LS.comments,COM);sbInsertComment(id,COM[id][COM[id].length-1]);
-  /* Un comentario simple sobre algo que está en revisión lo devuelve al responsable
-     (queda "Requiere ajustes"), que es lo que lo habilita a editar de nuevo. */
+  /* Comentar NO mueve la etiqueta. Solo la mueven los botones «Aprobado» y
+     «Requiere ajustes» — así el revisor puede dejar notas sin cambiar el estado. */
   let newSt=null;
   if(kind==="rev") newSt="rev";
   else if(kind==="fix") newSt="fix";
-  else if(statusOf(id)==="sent") newSt="fix";
-  if(newSt){ANS[id]=Object.assign({text:""},ANS[id],{status:newSt,updated:nowStr()});save(LS.answers,ANS);sbUpsertAnswer(id);}
-  renderSide();renderCurrentKeepOpen();}
+  if(newSt){clearRevUnlock(id);ANS[id]=Object.assign({text:""},ANS[id],{status:newSt,updated:nowStr()});save(LS.answers,ANS);sbUpsertAnswer(id);}
+  syncSectionStatus();renderSide();renderCurrentKeepOpen();}
 function addRef(id){const l=document.getElementById("rl-"+id).value.trim();const u=document.getElementById("ru-"+id).value.trim();if(!u&&!l)return;
   REF[id]=REF[id]||[];REF[id].push({label:l,url:u||"#"});save(LS.refs,REF);sbSyncRefs(id);renderCurrentKeepOpen();}
 function delRef(id,i){ if(!REF[id])return; REF[id].splice(i,1); save(LS.refs,REF); sbSyncRefs(id); renderCurrentKeepOpen(); }
 function renderCurrentKeepOpen(){const open=[...document.querySelectorAll(".req.open")].map(e=>e.dataset.id);renderMain();open.forEach(i=>{const el=document.querySelector(`.req[data-id="${i}"]`);if(el)el.classList.add("open");});}
 /* role switching is handled by login/logout (frag_auth) */
-function renderAll(){renderSide();renderMain();}
+function renderAll(){renderSide();renderMain();renderSaveChip();}
 boot();
 
 /* ===== Field type: year series (one historical note box per year since founding) ===== */
