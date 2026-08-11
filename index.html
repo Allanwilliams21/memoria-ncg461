@@ -947,7 +947,27 @@ function tblRows(f){
   return r;
 }
 function tblAddRow(id){TBL[id]=TBL[id]||[];TBL[id].push({});tblSave(id);renderCurrentKeepOpen();}
-function tblDelRow(id,i){if(TBL[id]){TBL[id].splice(i,1);tblSave(id);renderCurrentKeepOpen();}}
+function tblDelRow(id,i){
+  if(!TBL[id]) return;
+  /* Quitar la ÚLTIMA fila de una tabla que sostiene a otros requerimientos
+     los deja sin nada que mostrar: se avisa antes y se limpian con ella. */
+  const padre=TABLA_PADRE[id];
+  if(padre && TBL[id].length===1 && hijosConDatos(padre).length){
+    const hs=hijosConDatos(padre);
+    vntConfirm("Vas a quitar el último comité de la lista.\n\n"
+      +"Sin comités no hay nada que responder en:\n"
+      +hs.map(function(r){ return "   · "+reqLabel(BYID[r])+" — "+reqShort(BYID[r]); }).join("\n")
+      +"\n\nEsos requerimientos se limpian y vuelven a «Pendiente». No se guarda copia.",
+      "Sí, quitar","Cancelar",function(){
+        TBL[id].splice(i,1); tblSave(id);
+        conEspera("Limpiando los requerimientos que dependían del comité…",function(){
+          return Promise.all(hs.map(function(r){ return doLimpiar(BYID[r],false,false); }))
+            .then(function(){ renderSide(); renderCurrentKeepOpen(); }); });
+      });
+    return;
+  }
+  TBL[id].splice(i,1); tblSave(id); renderCurrentKeepOpen();
+}
 function tblSetCell(id,i,k,v){TBL[id]=TBL[id]||[];TBL[id][i]=TBL[id][i]||{};TBL[id][i][k]=v;tblSave(id);recalcTables();renderSideOnly();if(typeof actEdit==="function")actEdit(null);}
 function tblRowNA(id,i,b){TBL[id]=TBL[id]||[];TBL[id][i]=TBL[id][i]||{};TBL[id][i]._na=b;tblSave(id);renderCurrentKeepOpen();}
 function renderSideOnly(){try{renderSide();}catch(e){}}
@@ -1753,6 +1773,21 @@ const TBL_COMINT=/^t_comint_\d+$/;
 const TBL_DUENO="3_3_ii";                                   /* dueño de la tabla */
 const TBL_INVITADO={"3_3_iii":{test:TBL_COMINT,cols:["ej1","ej2"]}};
 function grupoDe(reqId){ return (reqId==="3_3_ii"||reqId==="3_3_iii")?["3_3_ii","3_3_iii"]:null; }
+/* ===================================================================
+   Requerimientos que dependen de otro
+   -------------------------------------------------------------------
+   3.3.ii y 3.3.iii solo tienen sentido si existe al menos un comité en
+   3.3.i: sin comités la pantalla dice «Primero registra los comités» y no
+   hay nada que responder. Por eso, cuando 3.3.i se queda sin comités
+   —porque se limpió o porque se quitó el último— sus dependientes se
+   vacían y vuelven a «Pendiente».
+   No es deducir el estado del contenido: es propagar el borrado.
+   =================================================================== */
+const HIJOS_DE={"3_3_i":["3_3_ii","3_3_iii"]};
+const TABLA_PADRE={"t_com":"3_3_i"};                 /* tabla que sostiene a los hijos */
+function hijosDe(reqId){ return (HIJOS_DE[reqId]||[]).filter(function(r){ return !!BYID[r]; }); }
+function hijosConDatos(reqId){
+  return hijosDe(reqId).filter(function(r){ const o=BYID[r]; return o&&!reqVacio(o); }); }
 function reqOfTable(id){ if(id in TABLE2REQ)return TABLE2REQ[id];
   if(TBL_COMINT.test(String(id))) return (BYID[TBL_DUENO]?TBL_DUENO:(("t_com" in TABLE2REQ)?TABLE2REQ["t_com"]:null));
   const b=String(id).replace(/__(g|sd)$/,""); return (b in TABLE2REQ)?TABLE2REQ[b]:null; }
@@ -2291,14 +2326,15 @@ function limpiarReq(id){
   const nt=tableIdsOf(d).filter(function(i){ return TBL[i]!==undefined; }).length;
   const ncol=tblColsOf(d).length;
   const nc=(COM[id]||[]).length;
-  const hay=(ansText(id).trim()!=="")||nf||nt||ncol||nc;
+  const hijos=hijosConDatos(id);
+  const hay=(ansText(id).trim()!=="")||nf||nt||ncol||nc||hijos.length;
   if(!hay){ vntAlert("Este requerimiento ya está vacío: no hay nada que limpiar."); return; }
   /* Avisos cuando lo que se borra lo están mirando otros requerimientos. */
   let extra="";
-  if(id==="3_3_i") extra="Los comités desaparecen, así que 3.3.ii y 3.3.iii dejarán de mostrar sus tablas "
-    +"hasta que vuelvas a registrar un comité. Los integrantes NO se borran: quedan guardados y reaparecen "
-    +"en el comité que ocupe la misma posición de la lista.\n\n";
-  if(id==="3_3_ii") extra="Se borran los integrantes de todos los comités, así que 3.3.iii "
+  if(hijos.length) extra="Sin comités no hay nada que responder en los requerimientos que dependen de éste, "
+    +"así que TAMBIÉN se limpian y vuelven a «Pendiente»:\n"
+    +hijos.map(function(r){ return "   · "+reqLabel(BYID[r])+" — "+reqShort(BYID[r]); }).join("\n")+"\n\n";
+  else if(id==="3_3_ii") extra="Se borran los integrantes de todos los comités, así que 3.3.iii "
     +"(ingresos percibidos) también queda vacío y vuelve a «Pendiente».\n\n";
   if(ncol) extra="Se vacían solo las columnas de este requerimiento ("+ncol+" comité(s)). "
     +"Los integrantes registrados en 3.3.ii se mantienen.\n\n";
@@ -2369,6 +2405,13 @@ async function doLimpiar(d,rerender,archivar){
       SB.from("answers").delete().eq("requirement_id",rid).then(function(r){ sbNote("answers",rid,r.error); });
       SB.from("comments").delete().eq("requirement_id",rid).then(function(r){ sbNote("comments",rid,r.error); }); }); }
   if(typeof recalc==="function"){ try{recalc();}catch(e){} }
+  /* Propagación: los requerimientos que dependían de éste se limpian también.
+     Se hace después de borrar el padre para que su contenido ya no esté. */
+  for(const hijo of hijosDe(id)){
+    const o=BYID[hijo]; if(!o) continue;
+    if(reqVacio(o)&&statusOf(hijo)==="pend") continue;
+    await doLimpiar(o,false,archivar);
+  }
   if(rerender){ renderSide(); renderCurrentKeepOpen(); }
   return true;
 }
