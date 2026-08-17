@@ -2426,7 +2426,12 @@ function prevValuesFor(d){
   const sch=schemaOf(d), pd=_pd(); const out={has:false,ans:null,ansField:null,fields:{},tables:{}};
   const sid=schemaIds(d);
   if(pd.fields){ sid.fields.forEach(id=>{ if(pd.fields[id]!=null){ out.fields[id]=pd.fields[id]; } }); }
-  if(pd.tables){ sid.tables.forEach(tid=>{ if(Array.isArray(pd.tables[tid])){ out.tables[tid]=pd.tables[tid]; } }); }
+  if(pd.tables){ sid.tables.forEach(tid=>{ if(Array.isArray(pd.tables[tid])){ out.tables[tid]=pd.tables[tid]; }
+    /* Las tablas de columnas dinámicas (nacionalidades en 5.1.2, habilidades en
+       3.2.iv) guardan la lista de columnas en una entrada aparte «<tabla>__g».
+       Sin ella, las cifras del año anterior se copian pero no tienen columnas
+       donde mostrarse y en pantalla parece que no pasó nada. */
+    if(Array.isArray(pd.tables[tid+"__g"])){ out.tables[tid+"__g"]=pd.tables[tid+"__g"]; } }); }
   const a=prevAns(d);
   if(a!=null&&String(a).trim()!==""){ if(!sch){ out.ans=a; } else { const tid=firstTextareaId(d); if(tid){ out.ans=a; out.ansField=tid; } } }
   out.has = (out.ans!=null) || Object.keys(out.fields).length>0 || Object.keys(out.tables).length>0;
@@ -2628,7 +2633,7 @@ function applyPrev(d,src){
   let nf=0; for(const id in src.fields){ const pv=src.fields[id]||{}; FIELDS[id]=Object.assign({},FIELDS[id],{v:(pv.v!=null?pv.v:""),na:!!pv.na}); nf++; sbUpsertField(id);
     puestos.push(fieldLabelOf(d,id)); }
   let nt=0; for(const tid in src.tables){ TBL[tid]=JSON.parse(JSON.stringify(src.tables[tid])); nt++; sbUpsertTable(tid);
-    puestos.push(fieldLabelOf(d,tid)); }
+    if(!/__g$/.test(tid)) puestos.push(fieldLabelOf(d,tid)); }
   if(src.ans!=null){
     if(!sch){ ANS[d.id]=Object.assign({},ANS[d.id],{text:src.ans,status:(ANS[d.id]&&ANS[d.id].status)||"draft",updated:nowStr()}); save(LS.answers,ANS); sbUpsertAnswer(d.id);
       puestos.push("Respuesta"); }
@@ -2644,7 +2649,9 @@ function applyPrev(d,src){
   return {puestos:puestos,ocultos:ocultos};
 }
 /* Cuenta qué se va a pegar de verdad, para no prometer más de lo que hay */
-function prevCount(src){ return Object.keys(src.fields||{}).length + Object.keys(src.tables||{}).length + (src.ans!=null?1:0); }
+function prevCount(src){ return Object.keys(src.fields||{}).length
+  + Object.keys(src.tables||{}).filter(function(t){ return !/__g$/.test(t); }).length
+  + (src.ans!=null?1:0); }
 /* Avisa qué quedó pegado y dónde. Antes no decía nada, y en los requerimientos
    de Sí/No el texto caía en un campo escondido: parecía que no había pasado nada. */
 function prevReport(d,res){
