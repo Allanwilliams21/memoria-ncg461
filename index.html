@@ -2741,14 +2741,29 @@ function applyPrev(d,src){
   const sch=schemaOf(d);
   const puestos=[], ocultos=[];
   let nf=0; for(const id in src.fields){ const pv=src.fields[id]||{}; FIELDS[id]=Object.assign({},FIELDS[id],{v:(pv.v!=null?pv.v:""),na:!!pv.na}); nf++; sbUpsertField(id);
-    puestos.push(fieldLabelOf(d,id)); }
+    if(id!==src.ansField) puestos.push(fieldLabelOf(d,id)); }
   let nt=0; for(const tid in src.tables){ TBL[tid]=JSON.parse(JSON.stringify(src.tables[tid])); nt++; sbUpsertTable(tid);
     if(!/__g$/.test(tid)) puestos.push(fieldLabelOf(d,tid)); }
   if(src.ans!=null){
     if(!sch){ ANS[d.id]=Object.assign({},ANS[d.id],{text:src.ans,status:(ANS[d.id]&&ANS[d.id].status)||"draft",updated:nowStr()}); save(LS.answers,ANS); sbUpsertAnswer(d.id);
       puestos.push("Respuesta"); }
-    else if(src.ansField){ FIELDS[src.ansField]=Object.assign({},FIELDS[src.ansField],{v:src.ans}); nf++; sbUpsertField(src.ansField);
-      puestos.push(fieldLabelOf(d,src.ansField));
+    else if(src.ansField){
+      /* El dato cargado y el relato del área pueden caer en el mismo cuadro:
+         pasa siempre que el requerimiento tiene un solo textarea. Antes el
+         relato pisaba el dato sin avisar. Ahora se conservan los dos. */
+      const yaPuesto=(src.fields&&src.fields[src.ansField]!=null)
+        ? String(src.fields[src.ansField].v==null?"":src.fields[src.ansField].v).trim() : "";
+      const relato=String(src.ans==null?"":src.ans).trim();
+      let val=relato, fusion=false;
+      if(yaPuesto && relato && yaPuesto!==relato && yaPuesto.indexOf(relato)<0){
+        val=yaPuesto+"\n\n———\nRespuesta del área en el ciclo anterior:\n"+relato;
+        fusion=true;
+      } else if(yaPuesto && (!relato || yaPuesto.indexOf(relato)>=0)){
+        val=yaPuesto;
+      }
+      FIELDS[src.ansField]=Object.assign({},FIELDS[src.ansField],{v:val}); nf++; sbUpsertField(src.ansField);
+      if(!fusion) puestos.push(fieldLabelOf(d,src.ansField));
+      else puestos.push(fieldLabelOf(d,src.ansField)+" (el dato de la memoria y la respuesta del área, uno debajo del otro)");
       if(fieldHiddenNow(d,src.ansField)) ocultos.push(fieldLabelOf(d,src.ansField)); }
   }
   if(nf) save(LS.fields,FIELDS);
