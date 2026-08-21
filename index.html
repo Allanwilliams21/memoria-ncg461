@@ -361,6 +361,12 @@ function isHidden(d){ return HIDDEN.indexOf(d.sub+"||"+d.item)>=0; }
 const SASB_ORDER=["FN-AC-270a.1","FN-AC-270a.2","FN-AC-270a.3","FN-AC-330a.1","FN-AC-410a.1","FN-AC-410a.2","FN-AC-410a.3","FN-AC-410b.1","FN-AC-410b.2","FN-AC-410b.3","FN-AC-410b.4","FN-AC-510a.1","FN-AC-510a.2","FN-AC-000.A","FN-AC-000.B"];
 const SASB_TOPIC={"FN-AC-270a":"Información transparente y asesoría justa a clientes","FN-AC-330a":"Diversidad e inclusión de empleados","FN-AC-410a":"Incorporación de factores ESG en la gestión de inversiones y asesoría","FN-AC-410b":"Emisiones financiadas","FN-AC-510a":"Ética empresarial","FN-AC-000":"Métricas de actividad"};
 function sasbTopic(d){ const m=(d.item||"").match(/^(FN-AC-\d+[a-z]?)/); return m?(SASB_TOPIC[m[1]]||null):null; }
+/* Título de tarjeta para los cuatro requerimientos que encabezan su propia
+   subsección. Sin esto mostraban el texto entero de la norma, porque no
+   tienen cuadro guiado del cual sacar un título.
+   OJO: esto NO cambia el nombre del subíndice (SUBNAME) ni el del índice de
+   contenidos (reqShort). Es solo la cabecera de la tarjeta. */
+const REQ_TITLE={"5.8||5.8":"Políticas de capacitación y beneficios","6.1||6.1":"Descripción sectores industriales","6.2||6.2":"Negocios de la entidad","7.1||7.1":"Política de pago a proveedores"};
 const CODE_LABEL={"5.4.2||i":"5.4.2","3.6||iv-esg":"iv+","3.6||iv-ciber":"iv✦","6.3||comunidad":"6.3✦"};
 function isCtxOnly(d){ return CTXONLY.indexOf(d.sub+"||"+d.item)>=0; }
 const BYID={}; DATA.forEach(d=>BYID[d.id]=d);
@@ -3550,7 +3556,15 @@ function headLineTxt(d){
 }
 function reqCard(d){
   const st=statusOf(d.id);
-  return `<div class="req" data-id="${d.id}"><div class="head" onclick="toggleReq('${d.id}')"><div class="code">${esc(CODE_LABEL[d.sub+"||"+d.item]||d.item||d.sub)}</div><div class="htext">${(function(){const t=headLineTxt(d);return t?`<div class="numlabel">${t}</div>`:"";})()}<div class="rt rt-1l" title="${esc(normaTexto(d.req))}">${esc(normaTexto(d.req))} ${lawIcons(d.req)}</div><div class="meta">${volBadge(d)}${dif519Badge(d)}${areaBadge(areaOf(d))}<span class="chip ${ST_CLS[st]}">${ST_LBL[st]}</span>${/si/i.test(d.obligatoriedad||"")?'<span class="chip">Obligatorio</span>':''}</div></div><div class="toggle-ico">›</div></div><div class="body">${reqBody(d)}</div></div>`;
+  return `<div class="req" data-id="${d.id}"><div class="head" onclick="toggleReq('${d.id}')"><div class="code">${esc(CODE_LABEL[d.sub+"||"+d.item]||d.item||d.sub)}</div><div class="htext">${(function(){
+      /* Con título propio la tarjeta se ve igual que las de cuadro guiado:
+         título de una línea y el responsable como etiqueta, no como antetítulo. */
+      const tit=REQ_TITLE[d.sub+"||"+d.item];
+      if(tit) return `<div class="qtitle">${esc(tit)} ${lawIcons(d.req)}</div>`;
+      const t=headLineTxt(d);
+      return (t?`<div class="numlabel">${t}</div>`:"")
+        +`<div class="rt rt-1l" title="${esc(normaTexto(d.req))}">${esc(normaTexto(d.req))} ${lawIcons(d.req)}</div>`;
+    })()}<div class="meta">${volBadge(d)}${dif519Badge(d)}${areaBadge(areaOf(d))}${respOf(d)?`<span class="chip">${esc(respOf(d))}</span>`:""}<span class="chip ${ST_CLS[st]}">${ST_LBL[st]}</span>${/si/i.test(d.obligatoriedad||"")?'<span class="chip">Obligatorio</span>':''}</div></div><div class="toggle-ico">›</div></div><div class="body">${reqBody(d)}</div></div>`;
 }
 function reqBody(d){
   const a=ANS[d.id]||{text:"",status:"pend"}; const canEdit=canEditReq(d);
